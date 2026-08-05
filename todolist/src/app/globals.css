@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+/**
+ * 화면에서 사용하는 색 조합의 명도 대비 (모두 4.5:1 이상)
+ * 본문 slate-900 #0F172A on #FFFFFF ≈ 17.9:1, 보조 slate-600 #475569 ≈ 7.5:1,
+ * 완료 slate-500 #64748B on #FFFFFF ≈ 4.8:1, 오류 red-700 #B91C1C ≈ 6.5:1.
+ */
+@theme {
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', 'Malgun Gothic', 'Apple SD Gothic Neo',
+    'Noto Sans KR', sans-serif;
+}
+
+html {
+  font-family: var(--font-sans);
+}
