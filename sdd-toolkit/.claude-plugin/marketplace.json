@@ -1,0 +1,12 @@
+{
+  "name": "sdd-local",
+  "owner": {
+    "name": "dev-msj"
+  },
+  "plugins": [
+    {
+      "name": "sdd-toolkit",
+      "source": "./"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "sdd-toolkit",
+  "description": "Spec-Driven Development workflow for Claude Code",
+  "version": "1.0.0",
+  "author": {
+    "name": "dev-msj"
+  }
+}

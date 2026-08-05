@@ -1,0 +1,17 @@
+{
+  "skillOverrides": {
+    "code-generator": "off",
+    "prd-writer": "off",
+    "sdd-auto": "off",
+    "sdd-build": "off",
+    "sdd-design": "off",
+    "sdd-init": "off",
+    "sdd-plan": "off",
+    "sdd-review": "off",
+    "spec-validator": "off",
+    "tech-spec-writer": "off"
+  },
+  "enabledPlugins": {
+    "sdd-toolkit@sdd-local": true
+  }
+}
