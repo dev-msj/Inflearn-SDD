@@ -1,6 +1,6 @@
 ---
 name: stock-market-analysis
-description: "주식 종목의 정량·정성 분석과 시장 심리 분석을 수행하고, 표준 양식의 분석 보고서를 output 폴더에 마크다운과 PDF로 문서화하는 스킬. 한국(KOSPI/KOSDAQ)과 미국(NYSE/NASDAQ) 종목을 모두 지원하며, 번들된 파이썬 스크립트로 시세·재무제표·밸류에이션·기술적 지표·공포탐욕지수를 직접 수집합니다. 사용자가 특정 종목이나 티커(삼성전자, 005930, AAPL, NVDA 등)를 언급하며 분석·전망·평가·의견을 묻거나, 주가 분석, 종목 분석, 재무제표 분석, 밸류에이션·PER·PBR·ROE 평가, 실적 분석, 기업 분석, 투자 판단, 저평가·고평가 여부, 매수·매도 시점, 동종업계 비교, 공포지수·VIX·시장 심리·투자심리 확인, 증시 상황 파악, 포트폴리오 종목 검토를 요청할 때 반드시 사용하세요. 종목 리서치 보고서 작성, 분석 결과를 PDF나 문서로 저장·출력해달라는 요청에도 사용합니다. '이 종목 어때?', '지금 사도 될까?', '실적 좋아졌어?' 처럼 캐주얼하게 묻는 경우에도 적용됩니다."
+description: "주식 종목의 정량·정성 분석과 시장 심리 분석을 수행하고, 표준 양식의 분석 보고서를 output 폴더에 마크다운과 PDF로 문서화하는 스킬. 한국(KOSPI/KOSDAQ)과 미국(NYSE/NASDAQ) 종목을 모두 지원하며, 번들된 파이썬 스크립트로 시세·재무제표·밸류에이션·기술적 지표·공포탐욕지수를 직접 수집합니다. 사용자가 특정 종목이나 티커(삼성전자, 005930, AAPL, NVDA 등)를 언급하며 분석·전망·평가·의견을 묻거나, 주가 분석, 종목 분석, 재무제표 분석, 밸류에이션·PER·PBR·ROE 평가, 실적 분석, 기업 분석, 투자 판단, 저평가·고평가 여부, 매수·매도 시점, 동종업계 비교, 공포지수·VIX·시장 심리·투자심리 확인, 증시 상황 파악, 포트폴리오 종목 검토를 요청할 때 반드시 사용하세요. 종목 리서치 보고서 작성, 분석 결과를 PDF나 문서로 저장·출력해달라는 요청에도 사용합니다. 매매 계획, 진입·손절·목표가 설정, 포지션 사이징, 지지·저항 레벨 확인 요청도 이 스킬의 범위이며 trade-strategist 서브에이전트로 연결됩니다. '이 종목 어때?', '지금 사도 될까?', '실적 좋아졌어?' 처럼 캐주얼하게 묻는 경우에도 적용됩니다."
 ---
 
 # 주식 시장 분석 스킬
@@ -21,24 +21,42 @@ description: "주식 종목의 정량·정성 분석과 시장 심리 분석을 
 | 경로 | 언제 읽나 |
 |---|---|
 | `scripts/market_data.py` | 데이터 수집 시 실행 (읽지 말고 실행) |
-| `scripts/export_report.py` | 완성한 보고서를 PDF로 변환할 때 실행 |
-| `scripts/position_calc.py` | 포지션 크기·손익비를 계산할 때 실행 (@trade-planner 전용) |
+| `scripts/trade_levels.py` | 지지·저항·손절·포지션 사이징을 계산할 때 실행 |
+| `scripts/export_report.py` | 완성한 문서를 PDF로 변환할 때 실행 |
 | `references/quantitative.md` | PER/PBR/ROE 등 지표를 해석할 때 |
 | `references/qualitative.md` | 해자·산업구조·리스크를 분석하고 웹 검색으로 정성 정보를 모을 때 |
 | `references/market-sentiment.md` | 공포탐욕지수·VIX·금리·수급을 해석할 때 |
+| `references/trading-strategy.md` | 매매 계획(진입·손절·목표·비중)을 설계할 때 |
 | `references/data-sources.md` | 스크립트가 실패했거나 소스를 확장할 때 |
-| `assets/report-template.md` | 보고서를 작성할 때 (그대로 복사해 채움) |
+| `assets/report-template.md` | 분석 보고서를 작성할 때 (그대로 복사해 채움) |
+| `assets/trade-plan-template.md` | 매매 계획서를 작성할 때 |
+
+매매 계획 수립은 `trade-strategist` 서브에이전트(`.claude/agents/trade-strategist.md`)가
+담당합니다. 자세한 사용법은 아래 7단계를 참고하세요.
 
 레퍼런스는 필요한 것만 읽으세요. 단순 시세 조회에 4개를 모두 읽을 필요는 없습니다.
 
 ---
 
-## 데이터 수집: `scripts/market_data.py`
+## 스크립트 실행 규칙
 
-표준 라이브러리만 쓰므로 설치가 필요 없습니다. 스킬 디렉터리 기준 경로로 실행하세요.
+**경로는 프로젝트 루트 기준입니다.** 작업 디렉터리를 옮기지 말고 아래 형태로 실행하세요.
+서브에이전트도 같은 규칙을 씁니다.
 
 ```bash
-python scripts/market_data.py <명령> <종목...> [--range 1y] [--format json|text]
+SKILL=.claude/skills/stock-market-analysis
+python $SKILL/scripts/market_data.py ...
+```
+
+세 스크립트 모두 표준 라이브러리만 쓰므로 별도 설치는 필요 없고, 한글 출력 인코딩도
+스크립트가 자체 처리하므로 환경변수를 따로 설정할 필요가 없습니다.
+
+---
+
+## 데이터 수집: `scripts/market_data.py`
+
+```bash
+python $SKILL/scripts/market_data.py <명령> <종목...> [--range 1y] [--format json|text]
 ```
 
 | 명령 | 용도 |
@@ -56,10 +74,10 @@ python scripts/market_data.py <명령> <종목...> [--range 1y] [--format json|t
 세 가지를 모두 받아들이며, KOSPI/KOSDAQ 접미사는 자동으로 판별합니다.
 
 ```bash
-python scripts/market_data.py report 005930      # 6자리 코드 → 005930.KS
-python scripts/market_data.py report 247540      # → 247540.KQ (코스닥 자동 인식)
-python scripts/market_data.py report AAPL        # 미국 티커
-python scripts/market_data.py report "삼성전자"   # 한글 종목명 → 검색 후 자동 해석
+python $SKILL/scripts/market_data.py report 005930      # 6자리 코드 → 005930.KS
+python $SKILL/scripts/market_data.py report 247540      # → 247540.KQ (코스닥 자동 인식)
+python $SKILL/scripts/market_data.py report AAPL        # 미국 티커
+python $SKILL/scripts/market_data.py report "삼성전자"   # 한글 종목명 → 검색 후 자동 해석
 ```
 
 한글 종목명으로 넘기면 결과의 `resolved_from` 에 어떤 후보 중에서 골랐는지가 담깁니다.
@@ -70,16 +88,16 @@ python scripts/market_data.py report "삼성전자"   # 한글 종목명 → 검
 
 ```bash
 # 종목 하나를 제대로 분석할 때 — 이것 하나로 시작
-python scripts/market_data.py report "에코프로비엠" --format text
+python $SKILL/scripts/market_data.py report "에코프로비엠" --format text
 
 # 여러 종목 동시 비교
-python scripts/market_data.py fundamentals 005930 000660 AAPL
+python $SKILL/scripts/market_data.py fundamentals 005930 000660 AAPL
 
 # 시장 분위기만 확인
-python scripts/market_data.py sentiment --format text
+python $SKILL/scripts/market_data.py sentiment --format text
 
 # 장기 추세를 볼 때
-python scripts/market_data.py technicals NVDA --range 5y
+python $SKILL/scripts/market_data.py technicals NVDA --range 5y
 ```
 
 `--format text` 는 사람이 읽기 좋은 요약이고, 기본값 `json` 은 전체 필드를 담습니다.
@@ -109,19 +127,14 @@ python scripts/market_data.py technicals NVDA --range 5y
 | "이 종목 어때?" / "분석해줘" | 전체 워크플로우 (2~5단계) | **필수** |
 | "A랑 B 중 뭐가 나아?" | 두 종목 `report` 후 비교 분석 | **필수** |
 | "보고서 만들어줘" / "PDF로 저장해줘" | 전체 워크플로우 후 6단계 | **필수** |
-| "매매 계획 세워줘" / "얼마에 사고 팔까?" | 분석 후 `@trade-planner` 로 인계 (7단계) | **필수** |
 
 단순 조회에 파일을 만드는 것은 과잉입니다. 반대로 전체 분석을 해놓고 대화창에만
 남기면 사용자가 나중에 참조할 방법이 없으니, 분석을 수행했다면 6단계까지 진행하세요.
 
-**"그래서 사야 돼?" 류의 질문을 받으면** 분석 결과를 제시하되 매수·매도 지시는 하지
-마세요. 이 스킬은 판단 재료를 만드는 도구이고, 실행 조건 설계가 필요하면 `@trade-planner`
-가 담당합니다. 그 에이전트 역시 권유가 아니라 조건부 규칙을 설계합니다.
-
 ### 2단계 — 정량 데이터 수집
 
 ```bash
-python scripts/market_data.py report <종목> --format json
+python $SKILL/scripts/market_data.py report <종목> --format json
 ```
 
 수치를 해석하기 전에 `references/quantitative.md` 를 읽으세요. **지표 하나만으로 판단하지
@@ -168,7 +181,7 @@ python scripts/market_data.py report <종목> --format json
 #    예: output/삼성전자_20260805_분석보고서.md
 
 # 2) 같은 이름의 PDF 생성
-python scripts/export_report.py output/삼성전자_20260805_분석보고서.md
+python $SKILL/scripts/export_report.py output/삼성전자_20260805_분석보고서.md
 ```
 
 결과물 두 개가 나란히 남습니다.
@@ -181,6 +194,11 @@ output/
 
 **날짜를 파일명에 반드시 넣으세요.** 같은 종목을 다른 시점에 분석하면 별도 파일로 쌓여
 판단의 변화를 추적할 수 있습니다. 날짜가 없으면 덮어쓰기가 되어 이력이 사라집니다.
+
+**같은 날 다시 실행하면 덮어쓰는 것이 기본입니다.** 하루 안의 재실행은 대개 수정·보완이지
+별개의 판단이 아니기 때문입니다. 다만 앞선 문서와 **결론이 달라지는 경우**(예: 진입 검토
+가능 → 진입 근거 없음)에는 `_v2` 를 붙여 둘 다 남기고, 무엇이 바뀌었는지 새 문서에
+적으세요. 판단이 뒤집힌 기록은 나중에 가장 값진 자료가 됩니다.
 
 `export_report.py` 는 시스템에 설치된 Chrome 또는 Edge를 헤드리스로 사용해 PDF를 만듭니다.
 A4 인쇄 레이아웃, 한글 폰트, 표 페이지 분할 방지가 적용되어 있습니다.
@@ -197,18 +215,48 @@ HTML까지만 만들고 사용자에게 상황을 알리세요. **PDF 변환에 
 
 작업을 마치면 생성된 파일의 실제 경로를 사용자에게 알려주세요.
 
-### 7단계 (선택) — 매매 계획으로 연결
+### 7단계 — 매매 계획 (선택)
 
-사용자가 보고서를 넘어 **실행 계획**(진입·손절·목표 가격대, 매수 수량, 청산 조건)을
-원하면 `@trade-planner` 에이전트로 넘기세요. 이 스킬은 "이 종목이 어떤 상태인가"까지
-답하고, 그 다음 "그래서 어떻게 실행할 것인가"는 별도 역할입니다.
+분석 보고서는 "이 회사가 어떤 상태인가"까지 답합니다. 사용자가 **"그래서 언제 사야 해?"**,
+"손절선 어디로 잡을까?", "얼마나 사면 될까?" 처럼 실행 단계를 물으면 `trade-strategist`
+서브에이전트에게 넘기세요.
 
-@trade-planner는 보고서의 **반증 조건을 청산 트리거로 번역**하고, 사용자가 제시한
-리스크 한도로 `scripts/position_calc.py` 를 돌려 포지션 크기와 손익비를 산출합니다.
-결과는 `output/<종목명>_<YYYYMMDD>_매매계획.md` 로 저장됩니다.
+```
+@trade-strategist output/삼성전자_20260805_분석보고서.md 기준으로 매매 계획 세워줘
+```
 
-넘기기 전에 확인할 것: **보고서의 7장(종합 결론)에 반증 조건이 실제로 적혀 있어야
-합니다.** 이것이 매매 계획의 재료이므로, 비어 있으면 계획도 근거를 잃습니다.
+이 에이전트는 보고서의 펀더멘털 판단과 `scripts/trade_levels.py` 의 기술적 레벨을 결합해
+**조건부 매매 계획**(진입 구간·손절가·목표가·비중·시나리오별 대응)을 설계하고
+`output/<종목>_<날짜>_매매계획.md` 와 PDF로 저장합니다.
+
+레벨 계산만 직접 필요하면 스크립트를 바로 쓸 수 있습니다.
+
+```bash
+# 현재 상태 파악 — 지지/저항, ATR, 손절 후보
+python $SKILL/scripts/trade_levels.py 005930 --format text
+
+# 일괄 진입: 진입가·손절가를 정한 뒤 손익비와 수량 계산
+python $SKILL/scripts/trade_levels.py 005930 \
+  --entry 201500 --stop 176500 --account 30000000 --risk-pct 2 --format text
+
+# 분할 진입: 차수별 수량까지 정수로 확정
+python $SKILL/scripts/trade_levels.py 005930 \
+  --split "212000:0.5,191500:0.5" --stop 176500 --account 30000000 --format text
+```
+
+지지/저항 군집, ATR 기반 손절 후보, 피보나치 되돌림, 거래량 밀집 구간, 손익비,
+포지션 사이징을 계산합니다.
+
+- `--entry`/`--stop`: 계획한 진입가 기준으로 손익비와 수량을 다시 계산합니다.
+  지정하지 않으면 현재가 + ATR 2배 손절을 가정합니다.
+- `--split "가격:비중,가격:비중"`: 분할 진입의 **차수별 수량을 정수로 확정**합니다.
+  평균가로 총수량을 구한 뒤 차수로 나누면 정수 반올림 때문에 평균가가 다시 바뀌는
+  순환 참조가 생기는데, 이 옵션이 한 번에 수렴시킵니다. 손절가가 최저 차수보다
+  높으면(= 마지막 차수 체결 전에 손절되는 모순) 오류로 잡아줍니다.
+
+손익비 출력의 `confidence`/`warning` 을 반드시 확인하세요. 터치 1회짜리 저항 구간은 가장
+멀어서 R:R이 제일 좋게 나오지만 근거는 가장 약합니다. 판단 기준은
+`references/trading-strategy.md` 에 있습니다.
 
 ---
 
@@ -240,11 +288,20 @@ HTML까지만 만들고 사용자에게 상황을 알리세요. **PDF 변환에 
 
 ## 지켜야 할 선
 
-- **투자 권유를 하지 마세요.** "지금 사세요", "곧 오릅니다" 같은 단정은 이 스킬의 역할
-  밖입니다. 데이터와 해석, 양쪽 시나리오를 제시하고 판단은 사용자에게 맡기세요.
-  사용자가 "사도 될까?"라고 물어도, 답은 매수 지시가 아니라 판단 재료여야 합니다.
-- **면책 고지를 반드시 포함하세요.** 보고서 템플릿 하단에 들어 있습니다.
-- **목표주가를 임의로 산출하지 마세요.** 애널리스트 컨센서스(`analyst.target_mean`)는
-  출처를 밝혀 인용할 수 있지만, 직접 계산한 목표가를 제시하는 것은 다른 문제입니다.
+- **"예측"이 아니라 "조건부 계획"으로 말하세요.** 이 구분이 스킬 전체를 관통하는 원칙입니다.
+  "곧 오릅니다"는 예측이고 빗나가면 손실로 끝나지만, "189,000원 지지에서 진입, 176,500원
+  이탈 시 손절"은 계획이고 빗나가도 손실 크기가 미리 정해져 있습니다. 사용자가
+  "사도 될까?"라고 물으면 매수 지시가 아니라 **조건과 그때의 대응**으로 답하세요.
+- **"지금은 진입 자리가 아니다"도 완전히 유효한 결론입니다.** 계획을 요청받았다고 해서
+  반드시 진입 계획이 나와야 하는 것은 아닙니다. 근거가 없는데 숫자를 만들어내는 것이
+  가장 나쁜 결과물입니다. `references/trading-strategy.md` 의 "계획을 세우지 말아야 할 때"를
+  확인하세요.
+- **분석 보고서에서는 목표주가를 임의로 산출하지 마세요.** 애널리스트 컨센서스
+  (`analyst.target_mean`)는 출처를 밝혀 인용할 수 있습니다. 매매 계획서의 목표가는
+  다릅니다 — 저항 구간이라는 근거와 함께 제시되고 손절가와 짝을 이루므로 허용됩니다.
+  **근거 없는 숫자가 문제이지 숫자 자체가 문제가 아닙니다.**
+- **수익 보장, 확률 단정, 레버리지 권유는 하지 마세요.** "80% 확률로" 같은 표현은
+  근거가 없고, 신용·파생은 요청받지 않은 이상 언급하지 않습니다.
+- **면책 고지를 반드시 포함하세요.** 두 템플릿 하단에 모두 들어 있습니다.
 - **불확실한 것은 불확실하다고 쓰세요.** 상충하는 정보를 발견하면 한쪽으로 단정하지 말고
   양쪽을 병기하고 쟁점을 밝히세요. 그 불확실성 자체가 판단에 필요한 정보입니다.

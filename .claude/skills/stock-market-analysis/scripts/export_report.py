@@ -330,7 +330,18 @@ def html_to_pdf(html_path: Path, pdf_path: Path) -> None:
         raise RuntimeError(f"PDF 생성 실패 ({Path(browser).name}): {detail}")
 
 
+def _use_utf8():
+    """Windows 콘솔 기본 코덱(cp949)으로는 한글 출력이 깨집니다. argparse가 stderr로
+    오류를 쓰기 전에 호출해야 인자 오류 메시지까지 정상 출력됩니다."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
 def main():
+    _use_utf8()
     p = argparse.ArgumentParser(
         description="마크다운 분석 보고서를 PDF로 변환합니다.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -341,11 +352,6 @@ def main():
     p.add_argument("--keep-html", action="store_true", help="중간 HTML 파일을 남깁니다")
     p.add_argument("--html-only", action="store_true", help="PDF 없이 HTML만 생성합니다")
     a = p.parse_args()
-
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
 
     src = Path(a.input)
     if not src.exists():

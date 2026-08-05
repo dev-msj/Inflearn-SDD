@@ -349,7 +349,10 @@ def get_technicals(symbol: str, rng: str = "1y") -> dict:
     closes = [c for c in ch["indicators"]["quote"][0]["close"] if c is not None]
     if len(closes) < 20:
         raise RuntimeError(f"{symbol}: 지표 계산에 필요한 데이터 부족")
-    price = closes[-1]
+
+    # 이격도와 수익률의 기준 가격은 현재가로 통일합니다. 마지막 완결 종가를 쓰면
+    # 장중에 trade_levels.py 와 다른 이격도가 나와 두 결과를 나란히 놓을 수 없습니다.
+    price = ch["meta"].get("regularMarketPrice") or closes[-1]
 
     def pos(n):
         v = sma(closes, n)
@@ -372,7 +375,9 @@ def get_technicals(symbol: str, rng: str = "1y") -> dict:
         **ident,
         "range": rng,
         "data_points": len(closes),
-        "last_close": round(price, 2),
+        "price": round(price, 2),
+        "last_completed_close": round(closes[-1], 2),
+        "price_basis": "현재가" if ch["meta"].get("regularMarketPrice") else "마지막 종가",
         "sma20": pos(20),
         "sma60": pos(60),
         "sma120": pos(120),
@@ -764,7 +769,18 @@ def render_text(cmd: str, data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
+def _use_utf8():
+    """Windows 콘솔 기본 코덱(cp949)으로는 한글 출력이 깨집니다. argparse가 stderr로
+    오류를 쓰기 전에 호출해야 인자 오류 메시지까지 정상 출력됩니다."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
 def main():
+    _use_utf8()
     p = argparse.ArgumentParser(
         description="주식 시장 데이터 수집 CLI (한국/미국)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -778,11 +794,6 @@ def main():
     p.add_argument("--range", default="1y", help="기술적 지표 조회 기간 (1mo/3mo/6mo/1y/2y/5y)")
     p.add_argument("--format", choices=["json", "text"], default="json")
     a = p.parse_args()
-
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
 
     cmd = a.command
     try:
