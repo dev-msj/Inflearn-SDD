@@ -1,0 +1,30 @@
+# 의존성
+/node_modules
+/.pnp
+.pnp.*
+
+# Next.js 빌드 산출물
+/.next/
+/out/
+/build
+next-env.d.ts
+
+# TypeScript 증분 빌드 정보
+*.tsbuildinfo
+
+# 환경변수 (시크릿 포함, .env.local.example만 커밋한다)
+.env
+.env.local
+.env.*.local
+
+# 로그·OS 파일
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode/*
+!.vscode/extensions.json
+.idea
