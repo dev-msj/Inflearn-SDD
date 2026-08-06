@@ -14,12 +14,12 @@ SDD 워크플로우에 필요한 기본 폴더 구조와 파일을 생성합니�
 
 ```bash
 # 디렉토리: 없을 때만 생성
-[ ! -d claudedocs ] && mkdir -p claudedocs
+[ ! -d docs ] && mkdir -p docs
 [ ! -d src ] && mkdir -p src
 
 # 파일: 없을 때만 생성
-[ ! -f claudedocs/PRD.md ] && echo "..." > claudedocs/PRD.md
-[ ! -f claudedocs/TECH_SPEC.md ] && echo "..." > claudedocs/TECH_SPEC.md
+[ ! -f docs/PRD.md ] && echo "..." > docs/PRD.md
+[ ! -f docs/TECH_SPEC.md ] && echo "..." > docs/TECH_SPEC.md
 ```
 
 **금지 행위:**
@@ -37,19 +37,19 @@ SDD 워크플로우에 필요한 기본 폴더 구조와 파일을 생성합니�
 
 ```bash
 # 현재 상태 확인
-ls -la claudedocs/ 2>/dev/null
+ls -la docs/ 2>/dev/null
 ls -la src/ 2>/dev/null
 ```
 
 ### Step 2: 폴더 구조 생성 (없는 것만)
 ```bash
-[ ! -d claudedocs ] && mkdir -p claudedocs
+[ ! -d docs ] && mkdir -p docs
 [ ! -d src ] && mkdir -p src
 ```
 
 ### Step 3: 빈 문서 파일 생성 (없는 것만)
-- `claudedocs/PRD.md` - 빈 PRD 템플릿 (헤더만) — **이미 있으면 스킵**
-- `claudedocs/TECH_SPEC.md` - 빈 TECH_SPEC 템플릿 (헤더만) — **이미 있으면 스킵**
+- `docs/PRD.md` - 빈 PRD 템플릿 (헤더만) — **이미 있으면 스킵**
+- `docs/TECH_SPEC.md` - 빈 TECH_SPEC 템플릿 (헤더만) — **이미 있으면 스킵**
 
 ### Step 4: 결과 확인
 
@@ -59,7 +59,7 @@ ls -la src/ 2>/dev/null
 
 ```
 [프로젝트명]/
-├── claudedocs/
+├── docs/
 │   ├── PRD.md            # → /sdd-plan에서 작성
 │   └── TECH_SPEC.md      # → /sdd-design에서 작성
 └── src/                  # → /sdd-build에서 코드 생성
@@ -89,7 +89,7 @@ ls -la src/ 2>/dev/null
 ✅ SDD 프로젝트 초기화 완료
 
 [프로젝트명]/
-├── claudedocs/
+├── docs/
 │   ├── PRD.md          (빈 템플릿 | 기존 유지)
 │   └── TECH_SPEC.md    (빈 템플릿 | 기존 유지)
 └── src/                (생성됨 | 기존 유지)
