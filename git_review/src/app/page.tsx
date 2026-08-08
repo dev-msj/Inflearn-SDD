@@ -157,7 +157,6 @@ export default function DashboardPage() {
                     : null
                 }
                 onRetry={() => void repoList.retry()}
-                installUrl={repoList.installUrl ?? undefined}
               />
             </section>
 

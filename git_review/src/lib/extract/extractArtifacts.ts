@@ -276,6 +276,14 @@ function toRawCandidate(
     return { ok: false, reason: 'is-url' };
   }
 
+  // 거부 규칙 #15: 선행 슬래시 = API 경로 / URL 경로 표기 (`/api/verify`, `/user/repos`).
+  // 저장소 루트 기준 산출물 경로는 관례상 슬래시 없이 적으므로, 선행 슬래시는 파일이 아니라는 신호로 본다.
+  // 정규화가 선행 슬래시를 지워버리기 때문에 반드시 정규화 이전에 검사해야 한다.
+  // R1(트리 블록)은 이름을 구조적으로 이어붙여 경로를 만들므로 이 함수를 거치지 않는다.
+  if (token.rawText.startsWith('/')) {
+    return { ok: false, reason: 'url-path' };
+  }
+
   const normalized = normalizePath(token.rawText);
   if (normalized === null) {
     // '..' 포함 등 정규화 불가 경로

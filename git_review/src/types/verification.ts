@@ -15,6 +15,9 @@ export type MatchMethod =
   | 'exact-directory' // 해당 접두사로 시작하는 blob 1개 이상
   | 'case-insensitive-file' // 대소문자만 다른 blob 일치
   | 'case-insensitive-directory'
+  | 'suffix-file' // 앞부분이 생략된 부분 경로가 저장소 파일 1개에만 대응
+  | 'suffix-directory'
+  | 'ambiguous-suffix' // 부분 경로에 대응하는 후보가 2개 이상이라 특정 불가
   | 'none';
 
 /** 검증 결과 항목 1건 */
@@ -27,6 +30,11 @@ export interface VerificationItem {
   matchMethod: MatchMethod;
   htmlUrl: string | null; // status === 'present'일 때만 채워짐
   childFileCount: number; // 폴더 판정 시 하위 파일 수, 파일이면 0
+  /**
+   * matchMethod === 'ambiguous-suffix'일 때 대응 후보 경로 목록. 그 외에는 빈 배열.
+   * "진짜 없는 파일"과 "여러 후보가 있어 특정 불가"를 화면에서 구분하기 위한 근거다.
+   */
+  candidatePaths: string[];
 }
 
 /** 준수율 및 판정 */

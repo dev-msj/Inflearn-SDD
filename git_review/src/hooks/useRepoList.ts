@@ -6,7 +6,6 @@
  * 담당 PRD 수용 기준
  *  - 1-2: 최근 수정일 내림차순 정렬은 서버(listAccessibleRepos)가 보장하므로 응답 순서를 그대로 유지한다.
  *  - 1-3: 저장소명 부분 일치 필터, 선택 시 전역 상태에 저장
- *  - 1-4 (엣지): 저장소 0개일 때 화면이 안내할 installUrl을 응답에서 함께 받아 전달한다.
  *  - 1-5 (엣지): selectedRepo는 repos 배열이 아닌 전역 상태의 독립 필드이므로 추가 로드 후에도 유지된다.
  *
  * setQuery는 즉시 반영한다. 디바운스는 RepoSearchInput이 이미 수행하므로 중첩하지 않는다.
@@ -19,15 +18,6 @@ import type { ReposResponse } from '@/types/api';
 import type { RepoSummary } from '@/types/github';
 
 export const REPOS_ENDPOINT = '/api/repos';
-
-/**
- * /api/repos 응답.
- * 클라이언트는 server-only 모듈인 lib/github/oauth.ts의 buildInstallUrl()을 호출할 수 없으므로
- * 설치 안내 링크를 서버가 응답에 함께 담아 내려준다.
- */
-export interface ReposApiResponse extends ReposResponse {
-  installUrl: string;
-}
 
 export interface UseRepoListResult {
   /** 누적 로드된 전체 */
@@ -42,8 +32,6 @@ export interface UseRepoListResult {
   error: AppError | null;
   selectedRepo: RepoSummary | null;
   selectRepo(repo: RepoSummary): void;
-  /** 저장소 0개일 때 안내할 GitHub App 설치 페이지 URL */
-  installUrl: string | null;
   /** 실패한 페이지를 다시 요청한다. */
   retry(): Promise<void>;
 }
@@ -56,7 +44,7 @@ export function filterReposByName(repos: RepoSummary[], query: string): RepoSumm
 }
 
 export function useRepoList(): UseRepoListResult {
-  const { authStatus, repos, reposPage, reposHasNext, repoQuery, selectedRepo, installUrl } = useAppState();
+  const { authStatus, repos, reposPage, reposHasNext, repoQuery, selectedRepo } = useAppState();
   const dispatch = useAppDispatch();
   const api = useAppApi();
 
@@ -73,13 +61,12 @@ export function useRepoList(): UseRepoListResult {
       setError(null);
 
       try {
-        const response = await api.requestJson<ReposApiResponse>(`${REPOS_ENDPOINT}?page=${page}`);
+        const response = await api.requestJson<ReposResponse>(`${REPOS_ENDPOINT}?page=${page}`);
         dispatch({
           type: 'APPEND_REPOS',
           items: response.page.items,
           page: response.page.page,
           hasNext: response.page.hasNext,
-          installUrl: response.installUrl ?? null,
         });
       } catch (caught) {
         setError(toAppError(caught));
@@ -136,7 +123,6 @@ export function useRepoList(): UseRepoListResult {
     error,
     selectedRepo,
     selectRepo,
-    installUrl,
     retry,
   };
 }

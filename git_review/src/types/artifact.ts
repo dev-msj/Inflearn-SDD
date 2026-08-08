@@ -62,7 +62,11 @@ export type RejectReason =
   | 'unknown-extension'
   | 'glob-pattern'
   | 'too-long'
-  | 'placeholder';
+  | 'placeholder'
+  | 'package-name'
+  | 'mime-type'
+  | 'example-placeholder'
+  | 'url-path';
 
 /** 추출 파이프라인 결과 */
 export interface ExtractResult {

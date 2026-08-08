@@ -63,6 +63,33 @@ const PLACEHOLDER_SEGMENTS: ReadonlySet<string> = new Set([
 /** 거부 규칙 #8: 어디에 있든 자리표시자로 보는 생략 기호 */
 const ELLIPSIS_MARKERS = ['...', '…'];
 
+/**
+ * 거부 규칙 #12: npm 스코프 패키지명 (`@octokit/rest`)
+ * 슬래시를 포함해 경로처럼 보이지만 저장소 파일이 아니다.
+ */
+const SCOPED_PACKAGE_RE = /^@[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+
+/**
+ * 거부 규칙 #13: MIME 타입 (`application/x-ndjson`, `text/markdown`)
+ * IANA 최상위 타입으로 시작하고 세그먼트가 2개면 파일 경로로 보지 않는다.
+ */
+const MIME_TOP_LEVEL_TYPES: ReadonlySet<string> = new Set([
+  'application', 'text', 'image', 'audio', 'video', 'font', 'model', 'multipart', 'message',
+]);
+
+/**
+ * 거부 규칙 #14: 설명용 예시 경로 (`a/b`, `a/b/c.ts`, `x/y/z`)
+ * 확장자를 뺀 모든 세그먼트가 1글자면 실제 산출물이 아니라 알고리즘 설명용 예시로 본다.
+ */
+function isExamplePlaceholder(segments: string[]): boolean {
+  if (segments.length < 2) return false;
+  return segments.every((segment) => {
+    const dotIndex = segment.lastIndexOf('.');
+    const stem = dotIndex > 0 ? segment.slice(0, dotIndex) : segment;
+    return stem.length === 1;
+  });
+}
+
 /** 슬래시로 분해한 뒤 빈 세그먼트를 제거한다. */
 function toSegments(token: string): string[] {
   return token.split('/').filter((segment) => segment.length > 0);
@@ -101,7 +128,7 @@ function isPlaceholder(token: string, segments: string[]): boolean {
 
 /**
  * 거부 사유 판정. null이면 통과.
- * TECH_SPEC의 거부 규칙 표 #1~#11을 표에 적힌 순서 그대로 적용한다.
+ * TECH_SPEC의 거부 규칙 표 #1~#14를 표에 적힌 순서 그대로 적용한다.
  */
 export function rejectionReason(token: string): RejectReason | null {
   // #1 길이 0 또는 200자 초과, 세그먼트 15개 초과
@@ -134,6 +161,17 @@ export function rejectionReason(token: string): RejectReason | null {
 
   // #8 자리표시자
   if (isPlaceholder(token, segments)) return 'placeholder';
+
+  // #12 npm 스코프 패키지명
+  if (SCOPED_PACKAGE_RE.test(token)) return 'package-name';
+
+  // #13 MIME 타입
+  if (segments.length === 2 && MIME_TOP_LEVEL_TYPES.has(segments[0].toLowerCase())) {
+    return 'mime-type';
+  }
+
+  // #14 설명용 예시 경로
+  if (isExamplePlaceholder(segments)) return 'example-placeholder';
 
   // #9 세그먼트 문자 검사
   if (segments.some((segment) => !SEGMENT_RE.test(segment))) return 'code-syntax';

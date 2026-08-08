@@ -2,7 +2,7 @@
  * 환경변수 로드 및 검증 (TECH_SPEC §5 환경변수)
  *
  * !! 서버 전용 모듈 !!
- * GITHUB_APP_CLIENT_SECRET / SESSION_SECRET을 다루므로 클라이언트 번들에 포함되면 안 된다.
+ * GITHUB_OAUTH_CLIENT_SECRET / SESSION_SECRET을 다루므로 클라이언트 번들에 포함되면 안 된다.
  * NEXT_PUBLIC_ 접두사를 쓰지 않으므로 값 자체는 브라우저로 나가지 않지만,
  * 실수로 클라이언트 컴포넌트가 import하는 것을 빌드 단계에서 차단하기 위해 server-only를 선언한다.
  */
@@ -10,9 +10,8 @@ import 'server-only';
 
 /** 필수 환경변수 목록 (.env.local.example과 1:1 대응) */
 export const REQUIRED_ENV_KEYS = [
-  'GITHUB_APP_CLIENT_ID',
-  'GITHUB_APP_CLIENT_SECRET',
-  'GITHUB_APP_SLUG',
+  'GITHUB_OAUTH_CLIENT_ID',
+  'GITHUB_OAUTH_CLIENT_SECRET',
   'SESSION_SECRET',
   'APP_BASE_URL',
 ] as const;

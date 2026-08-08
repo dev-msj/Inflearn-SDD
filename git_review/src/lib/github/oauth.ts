@@ -1,11 +1,14 @@
 /**
- * GitHub App OAuth 흐름 (TECH_SPEC §4 기능1 "OAuth 흐름")
+ * OAuth App 인증 코드 흐름 (TECH_SPEC §4 기능1 "OAuth 흐름")
  *
  * !! 서버 전용 모듈 !!
  * client_secret과 code↔token 교환을 다루므로 브라우저에서 호출할 수 없다.
  *
- * GitHub App은 권한이 앱 설정(Contents/Metadata: Read-only)에 고정되므로
- * 인가 요청에 scope 파라미터를 보내지 않는다. → PRD "읽기 전용" 제약을 기술적으로 강제.
+ * scope 파라미터를 보내지 않는다(= 스코프 없는 사용자 토큰).
+ * OAuth App의 `repo`/`public_repo` 스코프는 읽기와 쓰기가 묶여 있어,
+ * 하나라도 요청하면 PRD 보안 요구 3항("읽기 목적 이외의 저장소 변경은 일어나지 않는다")을
+ * 기술적으로 보장할 수 없다. 스코프를 비우면 공개 저장소의 공개 데이터만 읽을 수 있으므로
+ * 읽기 전용이 구조적으로 강제된다. 그 대가로 비공개 저장소는 검증 대상에서 제외된다.
  */
 import 'server-only';
 
@@ -17,7 +20,7 @@ import { AppError } from '@/lib/errors';
 export const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
 export const GITHUB_ACCESS_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
-/** GitHub App 설정의 Callback URL과 반드시 일치해야 하는 경로 */
+/** OAuth App 설정의 Authorization callback URL과 반드시 일치해야 하는 경로 */
 export const OAUTH_CALLBACK_PATH = '/api/auth/callback';
 
 /** state 바이트 길이 (hex 32자) */
@@ -41,12 +44,12 @@ export function generateState(): string {
 
 /**
  * 인가 URL 생성.
- * GitHub App은 권한이 앱 설정에 고정되므로 scope 파라미터를 보내지 않는다.
+ * scope 파라미터를 의도적으로 생략한다. (모듈 상단 주석의 읽기 전용 근거 참조)
  */
 export function buildAuthorizeUrl(state: string): string {
   const env = getEnv();
   const url = new URL(GITHUB_AUTHORIZE_URL);
-  url.searchParams.set('client_id', env.GITHUB_APP_CLIENT_ID);
+  url.searchParams.set('client_id', env.GITHUB_OAUTH_CLIENT_ID);
   url.searchParams.set('redirect_uri', buildRedirectUri());
   url.searchParams.set('state', state);
   return url.toString();
@@ -102,8 +105,8 @@ export async function exchangeCodeForToken(code: string): Promise<TokenExchangeR
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        client_id: env.GITHUB_APP_CLIENT_ID,
-        client_secret: env.GITHUB_APP_CLIENT_SECRET,
+        client_id: env.GITHUB_OAUTH_CLIENT_ID,
+        client_secret: env.GITHUB_OAUTH_CLIENT_SECRET,
         code,
         redirect_uri: buildRedirectUri(),
       }),
@@ -136,9 +139,4 @@ export async function exchangeCodeForToken(code: string): Promise<TokenExchangeR
 export function toTokenExpiresAt(expiresInSec: number | undefined, now: Date = new Date()): string | undefined {
   if (typeof expiresInSec !== 'number' || !Number.isFinite(expiresInSec)) return undefined;
   return new Date(now.getTime() + expiresInSec * 1000).toISOString();
-}
-
-/** GitHub App 설치 페이지 URL (저장소 0개일 때 "다음 행동" 링크) */
-export function buildInstallUrl(): string {
-  return `https://github.com/apps/${getEnv().GITHUB_APP_SLUG}/installations/new`;
 }

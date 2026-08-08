@@ -16,7 +16,6 @@ export type AppErrorCode =
   | 'AUTH_EXCHANGE_FAILED'
   | 'UNAUTHENTICATED'
   | 'SESSION_EXPIRED'
-  | 'NO_INSTALLATION'
   // 저장소/GitHub
   | 'REPO_FORBIDDEN'
   | 'REPO_NOT_FOUND'
@@ -48,7 +47,7 @@ export interface ErrorCatalogEntry {
 /**
  * 코드별 HTTP 상태·사용자 문구·재시도 가능 여부 단일 정의.
  *
- * httpStatus가 200인 코드(NO_INSTALLATION, REPO_EMPTY, TREE_TRUNCATED, EXTRACTION_EMPTY)는
+ * httpStatus가 200인 코드(REPO_EMPTY, TREE_TRUNCATED, EXTRACTION_EMPTY)는
  * "안내용" 코드다. 예외 응답으로 반환되지 않고 화면 안내 문구를 얻는 용도로만 사용한다.
  */
 export const ERROR_CATALOG: Record<AppErrorCode, ErrorCatalogEntry> = {
@@ -76,11 +75,6 @@ export const ERROR_CATALOG: Record<AppErrorCode, ErrorCatalogEntry> = {
     httpStatus: 401,
     userMessage: '세션이 만료되었습니다. 다시 로그인해 주세요',
     retryable: true,
-  },
-  NO_INSTALLATION: {
-    httpStatus: 200,
-    userMessage: '검증할 저장소가 없습니다. GitHub App에 저장소 접근을 허용하면 목록에 표시됩니다',
-    retryable: false,
   },
   REPO_FORBIDDEN: {
     httpStatus: 403,

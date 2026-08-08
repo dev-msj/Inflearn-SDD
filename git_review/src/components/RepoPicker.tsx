@@ -44,8 +44,6 @@ export interface RepoPickerProps {
   onLoadMore: () => void;
   error?: RepoPickerError | null;
   onRetry?: () => void;
-  /** 저장소 0개일 때 안내할 GitHub App 설치 페이지 URL */
-  installUrl?: string;
   className?: string;
 }
 
@@ -64,7 +62,6 @@ export function RepoPicker({
   onLoadMore,
   error = null,
   onRetry,
-  installUrl,
   className,
 }: RepoPickerProps) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -146,7 +143,7 @@ export function RepoPicker({
         />
       ) : null}
 
-      {showNoRepos ? <EmptyState variant="no-repos" actionHref={installUrl} /> : null}
+      {showNoRepos ? <EmptyState variant="no-repos" /> : null}
 
       {showNoSearchResults ? (
         <EmptyState variant="no-search-results" onAction={() => onQueryChange('')} />

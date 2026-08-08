@@ -68,7 +68,14 @@ export function ResultChecklist({ items, filter, isRunning = false, id, classNam
       className={['w-full rounded-md border border-line bg-surface', className ?? ''].filter(Boolean).join(' ')}
     >
       {items.map((item) => {
-        const isCaseMismatch = item.matchedPath !== null && item.matchedPath !== item.path;
+        // 매칭 경로가 다른 이유를 방법별로 구분해 표시한다. (대소문자 차이 ≠ 부분 경로 보정)
+        const isCaseMismatch =
+          item.matchMethod === 'case-insensitive-file' ||
+          item.matchMethod === 'case-insensitive-directory';
+        const isPartialPath =
+          item.matchMethod === 'suffix-file' || item.matchMethod === 'suffix-directory';
+        const isAmbiguous = item.matchMethod === 'ambiguous-suffix';
+        const showMatchedPath = (isCaseMismatch || isPartialPath) && item.matchedPath !== null;
         const showChildCount = item.kind === 'directory' && item.status === 'present';
 
         return (
@@ -82,10 +89,20 @@ export function ResultChecklist({ items, filter, isRunning = false, id, classNam
                 <code className="min-w-0 text-sm font-semibold break-all text-ink">{item.path}</code>
                 <StatusBadge variant={KIND_BADGE[item.kind]} />
                 {isCaseMismatch ? <StatusBadge variant="case-mismatch" /> : null}
+                {isPartialPath ? <StatusBadge variant="partial-path" /> : null}
+                {isAmbiguous ? <StatusBadge variant="ambiguous" /> : null}
               </div>
 
-              {isCaseMismatch ? (
+              {showMatchedPath ? (
                 <p className="text-xs break-all text-ink-muted">{`저장소의 실제 경로: ${item.matchedPath}`}</p>
+              ) : null}
+
+              {/* 파일이 없는 게 아니라 어느 것을 가리키는지 알 수 없는 경우임을 분명히 알린다. */}
+              {isAmbiguous ? (
+                <p className="text-xs break-all text-ink-muted">
+                  {`같은 이름의 후보 ${item.candidatePaths.length}개가 있어 어느 것을 가리키는지 알 수 없습니다: `}
+                  {item.candidatePaths.join(', ')}
+                </p>
               ) : null}
 
               {showChildCount ? (

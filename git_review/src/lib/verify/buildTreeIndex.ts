@@ -18,7 +18,25 @@ export interface TreeIndex {
   dirsLower: Map<string, string>;
   /** 폴더 경로 → 하위(재귀) 파일 수 */
   childFileCount: Map<string, number>;
+  /**
+   * 소문자 부분 경로(진접미사) → 그 접미사를 갖는 원본 파일 경로 목록.
+   * 문서가 `AppHeader.tsx`나 `components/AppHeader.tsx`처럼 앞을 생략해 적은 경우를
+   * 실제 파일로 이어주기 위한 인덱스다. 후보가 2개 이상이면 매칭하지 않는다.
+   */
+  fileSuffixes: Map<string, string[]>;
+  /** 폴더에 대한 동일한 접미사 인덱스 */
+  dirSuffixes: Map<string, string[]>;
   fileCount: number;
+}
+
+/** 접미사 인덱스에 (진접미사 → 원본 경로)를 등록한다. 전체 경로는 완전 일치가 담당하므로 제외한다. */
+function addSuffixes(target: Map<string, string[]>, path: string, segments: string[]): void {
+  for (let index = 1; index < segments.length; index += 1) {
+    const suffix = segments.slice(index).join('/').toLowerCase();
+    const bucket = target.get(suffix);
+    if (bucket === undefined) target.set(suffix, [path]);
+    else if (!bucket.includes(path)) bucket.push(path);
+  }
 }
 
 /** 저장소 루트 기준 표기로 통일한다. (선행 슬래시 제거, 중복 슬래시 축약) */
@@ -36,6 +54,8 @@ export function buildTreeIndex(entries: TreeEntry[]): TreeIndex {
   const filesLower = new Map<string, string>();
   const dirsLower = new Map<string, string>();
   const childFileCount = new Map<string, number>();
+  const fileSuffixes = new Map<string, string[]>();
+  const dirSuffixes = new Map<string, string[]>();
 
   for (const entry of entries) {
     if (entry.type !== 'blob') continue;
@@ -49,12 +69,19 @@ export function buildTreeIndex(entries: TreeEntry[]): TreeIndex {
     if (!filesLower.has(lower)) filesLower.set(lower, path);
 
     const segments = path.split('/');
+    addSuffixes(fileSuffixes, path, segments);
+
     for (let index = 0; index < segments.length - 1; index += 1) {
-      const prefix = segments.slice(0, index + 1).join('/');
+      const prefixSegments = segments.slice(0, index + 1);
+      const prefix = prefixSegments.join('/');
+      const isNewDir = !dirsWithFiles.has(prefix);
       dirsWithFiles.add(prefix);
 
       const prefixLower = prefix.toLowerCase();
       if (!dirsLower.has(prefixLower)) dirsLower.set(prefixLower, prefix);
+
+      // 폴더는 경로당 한 번만 접미사를 등록한다. (파일 수만큼 중복 순회하지 않도록)
+      if (isNewDir) addSuffixes(dirSuffixes, prefix, prefixSegments);
 
       childFileCount.set(prefix, (childFileCount.get(prefix) ?? 0) + 1);
     }
@@ -66,6 +93,8 @@ export function buildTreeIndex(entries: TreeEntry[]): TreeIndex {
     filesLower,
     dirsLower,
     childFileCount,
+    fileSuffixes,
+    dirSuffixes,
     fileCount: files.size,
   };
 }

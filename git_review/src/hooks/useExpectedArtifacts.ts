@@ -45,6 +45,10 @@ const REJECT_MESSAGES: Record<RejectReason, string> = {
   'glob-pattern': '와일드카드(*, ?)가 포함된 경로는 지원하지 않습니다',
   'too-long': '경로가 너무 깁니다',
   placeholder: '자리표시자는 산출물 경로로 추가할 수 없습니다',
+  'package-name': '패키지명은 저장소 파일이 아니라서 추가할 수 없습니다',
+  'mime-type': 'MIME 타입은 저장소 파일이 아니라서 추가할 수 없습니다',
+  'example-placeholder': '설명용 예시 경로(a/b 등)는 추가할 수 없습니다',
+  'url-path': 'API 경로 표기입니다. 저장소 기준 경로는 앞의 /를 빼고 입력해 주세요',
 };
 
 const INVALID_PATH_MESSAGE = '경로 형식을 확인해 주세요';

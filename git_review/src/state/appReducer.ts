@@ -28,8 +28,6 @@ export interface AppState {
   /** 마지막으로 불러온 페이지 번호 (0 = 아직 불러오지 않음) */
   reposPage: number;
   reposHasNext: boolean;
-  /** GitHub App 설치 안내 링크 (저장소 0개일 때의 다음 행동) */
-  installUrl: string | null;
   repoQuery: string;
   /** 검증 대상. repos 배열과 분리해 값 전체를 복사 보관한다. */
   selectedRepo: RepoSummary | null;
@@ -46,7 +44,6 @@ export const INITIAL_APP_STATE: AppState = {
   repos: [],
   reposPage: 0,
   reposHasNext: false,
-  installUrl: null,
   repoQuery: '',
   selectedRepo: null,
   documents: [],
@@ -63,7 +60,6 @@ export type AppAction =
       items: RepoSummary[];
       page: number;
       hasNext: boolean;
-      installUrl: string | null;
     }
   | { type: 'SET_REPO_QUERY'; query: string }
   | { type: 'SELECT_REPO'; repo: RepoSummary }
@@ -132,7 +128,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         repos: action.page <= 1 ? action.items : appendRepos(state.repos, action.items),
         reposPage: action.page,
         reposHasNext: action.hasNext,
-        installUrl: action.installUrl ?? state.installUrl,
       };
 
     case 'SET_REPO_QUERY':

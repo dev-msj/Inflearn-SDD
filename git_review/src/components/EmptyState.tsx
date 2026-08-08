@@ -45,8 +45,9 @@ const EMPTY_STATE_PRESETS: Record<EmptyStateVariant, EmptyStatePreset> = {
   'no-repos': {
     icon: Github,
     title: '검증할 저장소가 없습니다',
-    description: 'GitHub App에 저장소 접근을 허용하면 목록에 표시됩니다.',
-    actionLabel: 'GitHub App에 저장소 접근 허용하기',
+    // 읽기 전용을 보장하기 위해 스코프 없는 토큰을 쓰므로 비공개 저장소는 조회되지 않는다.
+    description: '이 앱은 공개 저장소만 조회합니다. 비공개 저장소는 목록에 표시되지 않습니다.',
+    actionLabel: 'GitHub에서 저장소 확인하기',
   },
   'no-search-results': {
     icon: Search,

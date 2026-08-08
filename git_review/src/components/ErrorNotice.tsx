@@ -35,7 +35,6 @@ export interface ErrorNoticeProps {
 
 /** 안내용 코드(httpStatus 200)는 경고/정보 톤으로, 나머지는 오류 톤으로 표시한다. */
 const TONE_BY_CODE: Partial<Record<AppErrorCode, ErrorNoticeTone>> = {
-  NO_INSTALLATION: 'info',
   REPO_EMPTY: 'info',
   EXTRACTION_EMPTY: 'info',
   TREE_TRUNCATED: 'warning',

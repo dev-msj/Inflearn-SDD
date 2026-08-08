@@ -10,7 +10,7 @@
 | 항목 | 결정 |
 |------|------|
 | 실행 형태 | Next.js App Router 단일 애플리케이션 (서버 런타임 포함) |
-| 인증 | **GitHub App** user access token (읽기 전용 fine-grained 권한) |
+| 인증 | **OAuth App** 인증 코드 흐름 + 스코프 없는 사용자 토큰 (읽기 전용 강제, 공개 저장소 한정) |
 | 세션 | iron-session 암호화 httpOnly 쿠키 (DB 없음, 서버 상태 없음) |
 | 토큰 노출 | 클라이언트 JS 접근 불가. 모든 GitHub 호출은 서버 Route Handler가 프록시 |
 | 저장소 파일 조회 | Git Trees API `?recursive=1` **단일 요청**으로 전체 트리 획득 |
@@ -36,21 +36,23 @@
 
 | 구분 | 기술 | 선정 근거 |
 |------|------|------|
-| 인증 방식 | **GitHub App** user-to-server 토큰 | PRD 보안 3항 "읽기 목적 이외의 저장소 변경은 일어나지 않는다"를 **기술적으로 강제**하려면 fine-grained 권한이 필요. GitHub App은 `Metadata: Read-only`, `Contents: Read-only`만 선언 가능. (아래 1.2.1 비교표 참조) |
+| 인증 방식 | **OAuth App** 인증 코드 흐름 + **스코프 없는** 사용자 토큰 | PRD 보안 3항 "읽기 목적 이외의 저장소 변경은 일어나지 않는다"를 **기술적으로 강제**해야 한다. OAuth App의 `repo`/`public_repo`는 읽기·쓰기가 묶여 있으므로 어떤 스코프도 요청하지 않는다. 그 결과 접근 범위가 공개 데이터 읽기로 제한된다. (아래 1.2.1 비교표 참조) |
 | 세션 저장소 | `iron-session` 8.x (AES-256-GCM 암호화 쿠키) | DB 금지 제약 하에서 세션을 유지하는 유일한 무상태 방식. 서버 메모리 Map은 인스턴스 재시작·다중 인스턴스에서 세션이 유실되므로 부적합. 쿠키는 `httpOnly` → **클라이언트 JS가 토큰에 접근 불가**(보안 1·4항). |
 | 쿠키 정책 | `httpOnly, secure, sameSite=lax, path=/`, **Max-Age 미지정(세션 쿠키)** | 브라우저 종료 시 즉시 폐기 → "세션 종료 시 즉시 폐기"(보안 1항), "세션 종료 후 다시 조회할 수 없다"(보안 2항). |
 | GitHub 클라이언트 | `@octokit/rest` 21.x (+ `@octokit/plugin-retry`) | 응답 타입 제공, `x-ratelimit-*` 헤더 파싱 내장, 페이지네이션 유틸 제공. **서버 전용 import**로 클라이언트 번들에 포함되지 않음. |
 
 #### 1.2.1 인증 방식 비교 (선정 근거)
 
-| 방식 | 비공개 저장소 읽기 | 쓰기 권한 | PRD "읽기 전용" 제약 | 판정 |
-|------|------|------|------|------|
-| OAuth App + `public_repo` | 불가 | **있음**(공개 저장소 쓰기) | 위반 | 탈락 |
-| OAuth App + `repo` | 가능 | **있음**(전체 읽기/쓰기) | 위반 | 탈락 |
-| OAuth App + 스코프 없음 | 불가 | 없음 | 충족하나 비공개 저장소 목록 불가 → 기능1 수용기준 2("공개/비공개 여부 표시") 미충족 | 탈락 |
-| **GitHub App (Contents: Read-only)** | 가능 | **없음** | 충족 | **채택** |
+| 방식 | 비공개 저장소 읽기 | 쓰기 권한 | PRD "읽기 전용" 제약 | 사전 준비 | 판정 |
+|------|------|------|------|------|------|
+| OAuth App + `public_repo` | 불가 | **있음**(공개 저장소 쓰기) | 위반 | Client ID/Secret | 탈락 |
+| OAuth App + `repo` | 가능 | **있음**(전체 읽기/쓰기) | 위반 | Client ID/Secret | 탈락 |
+| GitHub App (Contents: Read-only) | 가능 | 없음 | 충족 | 앱 생성 + **저장소별 설치** | 탈락 |
+| **OAuth App + 스코프 없음** | 불가 | **없음** | 충족 | Client ID/Secret | **채택** |
 
-> GitHub App 채택의 부작용: 앱이 설치된 저장소만 접근 가능. 이는 기능1 엣지 수용기준("접근 가능한 저장소가 0개이면 안내와 **다음 행동 안내 문구**")과 자연스럽게 연결된다 → 다음 행동 = "GitHub App에 저장소 접근 허용하기" 링크.
+> **채택 근거**: 쓰기 권한이 조금이라도 붙는 두 방식은 PRD 보안 3항을 코드로 보장할 수 없어 먼저 제외된다. 남은 두 방식 중 GitHub App은 읽기 전용을 보장하면서 비공개 저장소까지 볼 수 있지만, 사용자가 앱을 만들고 저장소마다 설치해야 하는 진입 장벽이 생긴다. MVP에서는 **설정 부담이 없는 쪽**을 택했다.
+>
+> **채택의 부작용**: 비공개 저장소는 조회되지 않는다. 검증 대상이 공개 저장소로 한정되며, 이는 PRD 제약사항과 비범위에 명시되어 있다. 기능1 엣지 수용기준("저장소가 0개이면 안내")의 다음 행동 안내는 설치 링크 대신 "공개 저장소만 조회한다"는 사실 고지로 대체한다.
 
 ### 1.3 문서 파싱 / 상태
 
@@ -66,7 +68,7 @@
 
 | 미채택 | 이유 |
 |--------|------|
-| Auth.js(NextAuth) | GitHub App user-to-server 토큰 + 만료/리프레시 흐름을 직접 제어해야 하고, DB 어댑터 없는 JWT 모드에서도 규약 학습 비용이 iron-session보다 크다. 필요한 것은 "암호화 쿠키 하나"뿐. |
+| Auth.js(NextAuth) | OAuth 토큰과 만료/리프레시 흐름을 직접 제어해야 하고, DB 어댑터 없는 JWT 모드에서도 규약 학습 비용이 iron-session보다 크다. 필요한 것은 "암호화 쿠키 하나"뿐. |
 | localStorage / sessionStorage | PRD 보안 2항(업로드 문서·검증 결과 미저장) 위반 소지. 상태는 메모리에만 둔다. |
 | `git clone` / `simple-git` | PRD 기술 제약 1항 위반(로컬 다운로드 금지). |
 | Contents API 항목별 조회 | 50개 항목 = 50 요청 → 15초 목표 및 rate limit 제약 모두 위협. Trees API 1회로 대체. |
@@ -269,6 +271,7 @@ export interface RejectedCandidate {
 export type RejectReason =
   | 'contains-whitespace' | 'is-url' | 'code-syntax' | 'shell-command'
   | 'version-string' | 'single-segment-no-extension' | 'unknown-extension'
+  | 'package-name' | 'mime-type' | 'example-placeholder' | 'url-path'
   | 'glob-pattern' | 'too-long' | 'placeholder';
 
 /** 추출 파이프라인 결과 */
@@ -295,6 +298,9 @@ export type MatchMethod =
   | 'exact-directory'             // 해당 접두사로 시작하는 blob 1개 이상
   | 'case-insensitive-file'       // 대소문자만 다른 blob 일치
   | 'case-insensitive-directory'
+  | 'suffix-file'            // 앞부분이 생략된 부분 경로가 저장소 파일 1개에만 대응
+  | 'suffix-directory'
+  | 'ambiguous-suffix'      // 부분 경로 후보가 2개 이상이라 특정 불가
   | 'none';
 
 /** 검증 결과 항목 1건 */
@@ -307,6 +313,7 @@ export interface VerificationItem {
   matchMethod: MatchMethod;
   htmlUrl: string | null;      // status === 'present'일 때만 채워짐
   childFileCount: number;      // 폴더 판정 시 하위 파일 수, 파일이면 0
+  candidatePaths: string[];    // matchMethod === 'ambiguous-suffix'일 때의 후보 목록, 그 외 빈 배열
 }
 
 /** 준수율 및 판정 */
@@ -348,7 +355,7 @@ export type VerifyEvent =
 export type AppErrorCode =
   // 인증/세션
   | 'AUTH_CANCELLED' | 'AUTH_STATE_MISMATCH' | 'AUTH_EXCHANGE_FAILED'
-  | 'UNAUTHENTICATED' | 'SESSION_EXPIRED' | 'NO_INSTALLATION'
+  | 'UNAUTHENTICATED' | 'SESSION_EXPIRED'
   // 저장소/GitHub
   | 'REPO_FORBIDDEN' | 'REPO_NOT_FOUND' | 'REPO_EMPTY'
   | 'RATE_LIMITED' | 'NETWORK_ERROR' | 'GITHUB_UNAVAILABLE' | 'TREE_TRUNCATED'
@@ -399,7 +406,7 @@ export function toAppError(error: unknown): AppError;
 /** 암호화 쿠키에 담기는 전체 내용. 이 객체는 서버에서만 복호화된다. */
 export interface AppSession {
   accessToken: string;         // GitHub user access token (서버 전용, 응답 바디에 절대 포함 금지)
-  refreshToken?: string;       // GitHub App 만료형 토큰 사용 시
+  refreshToken?: string;       // 만료형 토큰을 발급받은 경우에만
   tokenExpiresAt?: string;     // ISO8601
   user: GitHubUser;
   createdAt: string;
@@ -417,7 +424,7 @@ export function isSessionExpired(session: AppSession, now?: Date): boolean;
 **OAuth 흐름** (`src/lib/github/oauth.ts`)
 
 ```typescript
-/** 인가 URL 생성. GitHub App은 권한이 앱 설정에 고정되므로 scope 파라미터를 보내지 않는다. */
+/** 인가 URL 생성. 읽기 전용을 강제하기 위해 scope 파라미터를 보내지 않는다. */
 export function buildAuthorizeUrl(state: string): string;
 // => https://github.com/login/oauth/authorize?client_id=...&redirect_uri=...&state=...
 
@@ -431,9 +438,6 @@ export async function exchangeCodeForToken(code: string): Promise<{
   expiresInSec?: number;
 }>;
 
-/** GitHub App 설치 페이지 URL (저장소 0개일 때 "다음 행동" 링크) */
-export function buildInstallUrl(): string;
-// => https://github.com/apps/{GITHUB_APP_SLUG}/installations/new
 ```
 
 **저장소 목록 조회** (`src/lib/github/repos.ts`)
@@ -443,7 +447,7 @@ export const REPOS_PER_PAGE = 50; // 임의 설정 — 검토 필요 (3초 목�
 
 /**
  * GET /user/repos?sort=pushed&direction=desc&per_page=50&page=N
- * - GitHub App user access token으로 호출하면 "사용자와 앱이 모두 접근 가능한 저장소"만 반환된다.
+ * - 스코프 없는 사용자 토큰으로 호출하면 공개 저장소만 반환된다.
  * - sort=pushed&direction=desc → PRD "최근 수정일 내림차순" 요구를 서버 측에서 충족(페이지 간 순서 보장).
  * - Link 헤더의 rel="next" 유무로 hasNext 판정 → 100개 초과 저장소의 순차 로드 지원.
  */
@@ -485,7 +489,7 @@ export function filterReposByName(repos: RepoSummary[], query: string): RepoSumm
 | 미로그인 시 로그인 진입점만 노출 / 인증 후 계정명·프로필 이미지 표시 | `page.tsx`가 `useSession()`의 `authenticated`가 false면 `LoginGate`만 렌더. true면 `AppHeader`에 `user.login` + `user.avatarUrl`(next/image) 표시 |
 | 저장소 목록 최근 수정일 내림차순 + 저장소명·기본 브랜치·공개/비공개 표시 | `listAccessibleRepos`가 `sort=pushed&direction=desc` 사용, `RepoListItem`이 `name` / `defaultBranch` / `isPrivate ? '비공개' : '공개'` 배지 렌더 |
 | 검색 필터 + 선택 시 "검증 대상" 고정 표시 | `RepoSearchInput` → `filterReposByName` → `visibleRepos`. 선택 시 `SELECT_REPO` 액션, `SelectedRepoBanner`가 상단 sticky로 고정 표시 |
-| (엣지) 저장소 0개 | `repos.length === 0 && !isLoading` → `EmptyState` variant `no-repos`: "검증할 저장소가 없습니다" + `buildInstallUrl()` 링크("GitHub App에 저장소 접근 허용하기") |
+| (엣지) 저장소 0개 | `repos.length === 0 && !isLoading` → `EmptyState` variant `no-repos`: "검증할 저장소가 없습니다" + "이 앱은 공개 저장소만 조회합니다" 고지 |
 | (엣지) 100개 초과 순차 로드 + 선택 유지 | `hasNext`가 true인 동안 "더 보기" 버튼 노출, `loadMore()`가 `page+1` 요청 후 배열에 append. `selectedRepo`는 별도 필드라 유지됨 |
 | (에러) 인증 취소/권한 거부 | `auth/callback/route.ts`가 쿼리에 `error=access_denied` 존재 시 `/?error=AUTH_CANCELLED`로 302 → `ErrorNotice`가 "인증이 취소되었습니다. 다시 시도해 주세요" + 재시도 버튼 표시 |
 | (에러) 로그아웃/세션 만료 시 전체 초기화 | `logout/route.ts`가 `destroySession()` 후 클라이언트가 `RESET_ALL` 액션 디스패치 → user·repos·documents·artifacts·report 전부 초기값으로 복귀. 401 응답 수신 시에도 동일 액션 실행 |
@@ -617,7 +621,7 @@ export function parseTreeBlock(code: string, blockStartLine: number): RawCandida
 
 > **들여쓰기 폭을 고정값(4칸)으로 가정하지 않고 컬럼 위치 스택을 쓰는 근거**: 2칸/3칸/4칸 들여쓰기와 `│   ` 혼용이 실제 문서에 모두 존재한다. 컬럼 비교는 폭에 무관하게 동작한다.
 
-> **8단계(단일 루트 절단)가 필요한 근거**: 문서의 트리 블록은 대개 저장소 이름을 루트 노드로 얹어 그린다(본 문서 §2가 정확히 그 형태다). 절단하지 않으면 복원 경로가 `git_review/src/app/page.tsx`가 되는데, `TreeEntry.path`는 저장소 루트 기준 상대 경로이므로(§3.1) 이 경로는 어떤 저장소와도 매칭되지 않아 R1 산출물이 전량 "없음"으로 오판정된다. 또한 인라인 코드(R3)·표(R4)가 뽑은 올바른 경로와 병합되지 않아 같은 파일이 중복 항목으로 남는다. 절단 규칙이 §8 검증 매트릭스 2-2의 기대 출력(`src/app/page.tsx`)을 성립시킨다.
+> **8단계(단일 루트 절단)가 필요한 근거**: 문서의 트리 블록은 대개 저장소 이름을 루트 노드로 얹어 그린다(본 문서 §2가 정확히 그 형태다). 절단하지 않으면 복원 경로 앞에 저장소 이름이 그대로 남는데(예: 루트가 git_review 인 트리 → "git_review" + "/src/app/page.tsx"), `TreeEntry.path`는 저장소 루트 기준 상대 경로이므로(§3.1) 이 경로는 어떤 저장소와도 매칭되지 않아 R1 산출물이 전량 "없음"으로 오판정된다. 또한 인라인 코드(R3)·표(R4)가 뽑은 올바른 경로와 병합되지 않아 같은 파일이 중복 항목으로 남는다. 절단 규칙이 §8 검증 매트릭스 2-2의 기대 출력(`src/app/page.tsx`)을 성립시킨다.
 
 ##### R2. 코드블록 내 단독 경로 라인 (`rule: 'code-block-path'`)
 
@@ -706,8 +710,14 @@ export function rejectionReason(token: string): RejectReason | null;
 | 9 | 세그먼트에 `SEGMENT_RE` 불일치 문자 존재 | `code-syntax` | 비정상 문자 |
 | 10 | 세그먼트 1개 & 확장자 없음 & `KNOWN_EXTENSIONLESS_FILES` 미포함 | `single-segment-no-extension` | `useState`, `addTodo` 같은 식별자 차단 |
 | 11 | 세그먼트 1개 & 확장자가 `KNOWN_EXTENSIONS` 미포함 | `unknown-extension` | `Component.Props` 같은 표기 차단 |
+| 12 | `/^@[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/` 매치 | `package-name` | npm 스코프 패키지(`@octokit/rest`)는 저장소 파일이 아니다 |
+| 13 | 세그먼트 2개 & 첫 세그먼트가 IANA 최상위 타입(`application`, `text`, `image`, `audio`, `video`, `font`, `model`, `multipart`, `message`) | `mime-type` | `application/x-ndjson` 같은 MIME 표기 차단 |
+| 14 | 세그먼트 2개 이상 & 확장자를 뺀 모든 세그먼트가 1글자 | `example-placeholder` | 알고리즘 설명용 예시 경로(`a/b`, `a/b/c.ts`) 차단 |
+| 15 | 원문이 `/`로 시작 (**정규화 이전**에 검사) | `url-path` | API 경로·URL 경로 표기 차단. 저장소 기준 산출물 경로는 관례상 슬래시 없이 적는다. R1(트리 블록)은 이름을 구조적으로 이어붙이므로 이 규칙을 거치지 않는다 |
 
 > 세그먼트가 2개 이상(`/` 포함)이면 규칙 10·11을 적용하지 않는다. 근거: `src/components`처럼 확장자 없는 폴더 경로를 살려야 한다.
+>
+> **규칙 12~14 도입 근거**: 규칙 10·11이 세그먼트 2개 이상을 면제하기 때문에, 슬래시를 포함한 비(非)경로 표기가 그대로 통과했다. 실측 결과 이 프로젝트 문서 기준으로 패키지명·MIME·예시 경로 14건이 산출물로 잡혀 준수율을 왜곡했다.
 
 ##### 정규화 (`lib/extract/normalizePath.ts`)
 
@@ -812,6 +822,8 @@ export interface TreeIndex {
   filesLower: Map<string, string>;    // 소문자 경로 → 원본 경로
   dirsLower: Map<string, string>;
   childFileCount: Map<string, number>; // 폴더 경로 → 하위(재귀) 파일 수
+  fileSuffixes: Map<string, string[]>; // 소문자 진접미사 → 그 접미사를 갖는 파일 경로 목록
+  dirSuffixes: Map<string, string[]>;  // 폴더에 대한 동일 인덱스
   fileCount: number;
 }
 
@@ -841,12 +853,23 @@ export interface MatchContext { repo: RepoSummary; ref: string; }
  *  kind === 'file'
  *    1) files.has(path)                       → present / 'exact-file'
  *    2) filesLower.has(lower(path))           → present / 'case-insensitive-file'
- *    3) 그 외                                  → missing / 'none'
+ *    3) fileSuffixes.get(lower(path))의 후보가 정확히 1개 → present / 'suffix-file'
+ *    4) 그 외                                  → missing / 'none'
  *
  *  kind === 'directory'
  *    1) dirsWithFiles.has(path)               → present / 'exact-directory'
  *    2) dirsLower.has(lower(path))            → present / 'case-insensitive-directory'
- *    3) 그 외                                  → missing / 'none'
+ *    3) dirSuffixes.get(lower(path))의 후보가 정확히 1개 → present / 'suffix-directory'
+ *    4) 후보가 2개 이상 → missing / 'ambiguous-suffix' (+ candidatePaths에 후보 목록)
+ *    5) 그 외                                  → missing / 'none'
+ *
+ *  접미사 유일 일치(3단계)를 두는 근거:
+ *    설계 문서는 같은 파일을 구조 트리에서는 전체 경로로, 본문에서는 `AppHeader.tsx`나
+ *    `components/AppHeader.tsx`처럼 앞을 생략해 적는다. 완전 일치만 인정하면 후자가 전부
+ *    "없음"이 되어 준수율이 실제보다 크게 낮아진다. (실측: 이 프로젝트 문서 기준 48.4%)
+ *    오탐을 막기 위해 후보가 정확히 1개일 때만 인정한다. 2개 이상이면 매칭하지 않는다.
+ *    (예: `route.ts`는 저장소에 6개 존재 → 특정 불가 → missing 유지)
+ *    화면은 이 경우 "부분 경로 매칭" 배지와 저장소의 실제 경로를 함께 표시한다.
  *
  *  kind === 'unknown'
  *    파일 규칙을 먼저 적용하고, 실패하면 폴더 규칙을 적용한다.
@@ -978,9 +1001,8 @@ export interface VerifyRequest {
 
 | 변수 | 용도 |
 |------|------|
-| `GITHUB_APP_CLIENT_ID` | GitHub App의 Client ID |
-| `GITHUB_APP_CLIENT_SECRET` | code↔token 교환용 시크릿 (서버 전용) |
-| `GITHUB_APP_SLUG` | 설치 안내 링크 생성용 |
+| `GITHUB_OAUTH_CLIENT_ID` | OAuth App의 Client ID |
+| `GITHUB_OAUTH_CLIENT_SECRET` | code↔token 교환용 시크릿 (서버 전용) |
 | `SESSION_SECRET` | iron-session 암호화 키 (32자 이상) |
 | `APP_BASE_URL` | redirect_uri 구성용 (예: `http://localhost:3000`) |
 
@@ -1004,7 +1026,7 @@ export interface VerifyRequest {
 | state 불일치(CSRF 의심) | `lib/github/oauth.ts` `verifyState()` | `AUTH_STATE_MISMATCH` | 세션 파기 후 로그인 화면 복귀 | "인증 요청을 확인할 수 없습니다. 처음부터 다시 시도해 주세요" | 로그인 버튼 |
 | 토큰 교환 실패 | `exchangeCodeForToken()` | `AUTH_EXCHANGE_FAILED` | 302 + 에러 코드 | "GitHub 인증에 실패했습니다. 잠시 후 다시 시도해 주세요" | 로그인 버튼 |
 | 로그아웃 / 세션 만료 | `lib/session.ts` `requireSession()` → 401 | `SESSION_EXPIRED` / `UNAUTHENTICATED` | 클라이언트 fetch 래퍼가 401 감지 → `RESET_ALL` 디스패치(계정·저장소·문서·산출물·결과 전부 제거) | "세션이 만료되었습니다. 다시 로그인해 주세요" | 로그인 버튼 |
-| 접근 가능 저장소 0개 | `api/repos/route.ts` 응답 `items.length === 0 && page === 1` | `NO_INSTALLATION`(안내용, 예외 아님) | `EmptyState` 렌더 | "검증할 저장소가 없습니다" + "GitHub App에 저장소 접근을 허용하면 목록에 표시됩니다" | 설치 페이지 링크 |
+| 조회된 공개 저장소 0개 | `RepoPicker` `totalCount === 0 && !isLoading` | (에러 코드 없음 — 정상 상태) | `EmptyState variant="no-repos"` 렌더 | "검증할 저장소가 없습니다" + "이 앱은 공개 저장소만 조회합니다" | 없음 |
 | 저장소 조회 권한 부족 | `lib/github/client.ts` — 403(rate limit 아님) / 404 | `REPO_FORBIDDEN` / `REPO_NOT_FOUND` | `verify` 스트림에 `error` 이벤트, 직전 report 유지 | "이 저장소를 조회할 권한이 없습니다. 접근 권한을 확인해 주세요" | 재시도 버튼 |
 | 요청 한도 초과 | `lib/github/rateLimit.ts` — 403/429 + `x-ratelimit-remaining: 0` | `RATE_LIMITED` | **검증 즉시 중단**, `resetAt`를 한국 시각으로 포맷해 안내 | "GitHub 요청 한도를 초과했습니다. {HH:mm} 이후 다시 시도해 주세요" | `resetAt` 이후 활성화되는 재시도 버튼 |
 | 네트워크 오류 | 클라이언트 `fetch` reject / 서버 `ECONNRESET`·타임아웃(15초) | `NETWORK_ERROR` | 스트림 중단, 직전 report 유지 | "네트워크 연결이 불안정합니다. 연결 확인 후 다시 시도해 주세요" | 재시도 버튼 |
@@ -1036,7 +1058,7 @@ export interface VerifyRequest {
 |------|------|
 | 인증 정보 세션 동안만 유지 | 세션 쿠키(Max-Age 미지정) + `tokenExpiresAt` 서버 검사. 로그아웃 시 `destroySession()` |
 | 업로드 문서·결과 영구 미저장 | 문서/결과는 React 메모리에만 존재. `localStorage`/`sessionStorage`/`indexedDB` 사용 금지(ESLint `no-restricted-globals`로 강제). `/api/verify`는 경로 문자열만 수신하고 응답을 캐시하지 않음(`Cache-Control: no-store`) |
-| 읽기 목적 외 변경 없음 | GitHub App 권한을 `Contents: Read-only`, `Metadata: Read-only`로 선언. 코드에도 GET 호출만 존재 |
+| 읽기 목적 외 변경 없음 | 인가 요청에 scope 파라미터를 보내지 않아 토큰에 쓰기 권한이 부여되지 않음. 코드에도 GET 호출만 존재 |
 | 인증 정보 원문 미노출 | 토큰은 암호화 쿠키 내부에만 존재. `/api/session`은 `GitHubUser`만 반환. 토큰을 인자로 받는 함수는 전부 `lib/github/*`(서버 전용 모듈) |
 
 ### 7.3 접근성
@@ -1058,7 +1080,7 @@ export interface VerifyRequest {
 | 1-1 | 미로그인 시 로그인 진입점만 / 인증 후 계정명·프로필 표시 | `app/page.tsx`, `components/LoginGate.tsx`, `AppHeader.tsx`, `hooks/useSession.ts` | `useSession().authenticated` 분기 | 시나리오: 시크릿 창 접속 → 로그인 버튼만 보임 / 로그인 후 헤더에 login·avatar 표시 |
 | 1-2 | 저장소 목록 최근 수정일 내림차순 + 저장소명·기본 브랜치·공개여부 | `lib/github/repos.ts`, `components/RepoListItem.tsx` | `listAccessibleRepos()` (`sort=pushed&direction=desc`) | 단위: `toRepoSummary` 매핑 테스트 / 시나리오: 목록 첫 항목이 가장 최근 푸시된 저장소, 3개 필드 표시 확인 |
 | 1-3 | 검색 필터 + 선택 시 "검증 대상" 고정 표시 | `components/RepoSearchInput.tsx`, `SelectedRepoBanner.tsx`, `hooks/useRepoList.ts` | `filterReposByName()`, `selectRepo()` | 단위: `filterReposByName` 대소문자·부분일치 테스트 / 시나리오: 검색어 입력 후 목록 축소, 선택 시 배너 고정 |
-| 1-4 | (엣지) 저장소 0개 안내 + 다음 행동 | `components/EmptyState.tsx`, `lib/github/oauth.ts` | `EmptyState variant="no-repos"`, `buildInstallUrl()` | 시나리오: 앱 설치 저장소 0개 계정으로 로그인 → 안내 문구와 설치 링크 노출 |
+| 1-4 | (엣지) 저장소 0개 안내 + 공개 저장소 한정 고지 | `components/EmptyState.tsx`, `components/RepoPicker.tsx` | `EmptyState variant="no-repos"` | 시나리오: 공개 저장소가 없는 계정으로 로그인 → 안내 문구와 "공개 저장소만 조회" 고지 노출 |
 | 1-5 | (엣지) 100개 초과 순차 로드 + 선택 유지 | `hooks/useRepoList.ts`, `components/RepoPicker.tsx` | `loadMore()`, `hasNext`(Link 헤더) | 시나리오: 저장소 120개 계정에서 1페이지 선택 후 "더 보기" → 선택 배너 유지 확인 |
 | 1-6 | (에러) 인증 취소 시 로그인 화면 복귀 + 메시지 | `app/api/auth/callback/route.ts`, `components/ErrorNotice.tsx` | `error=access_denied` 분기 → `AUTH_CANCELLED` | 시나리오: GitHub 인가 화면에서 Cancel → "인증이 취소되었습니다. 다시 시도해 주세요" + 재시도 정상 동작 |
 | 1-7 | (에러) 로그아웃·세션 만료 시 전체 제거 | `app/api/auth/logout/route.ts`, `lib/session.ts`, `state/appReducer.ts` | `destroySession()`, `RESET_ALL` 액션 | 단위: reducer `RESET_ALL` 후 user/repos/documents/artifacts/report 초기값 검증 / 시나리오: 로그아웃 후 화면 전체 초기화 |
@@ -1089,13 +1111,16 @@ export interface VerifyRequest {
 | 3 | 최대 추출 항목 수 | `MAX_ARTIFACTS = 300` | 화면·성능 보호. 대형 TECH_SPEC에서 절단 발생 가능 |
 | 4 | 검증 요청 항목 상한 | 500개 | API 남용 방지. PRD 성능 기준(50개)의 10배 |
 | 5 | 공백 포함 경로 미지원 | 거부 규칙 #2 | 오탐 억제 우선. `docs/my file.md` 같은 경로를 놓침 |
+| 5-A | 접미사 유일 매칭 도입 | 후보 1개일 때만 인정 | 문서가 앞을 생략해 적은 경로(`AppHeader.tsx`)를 실제 파일로 이어준다. 실측 준수율 48.4% → 98.7%. 리스크: 저장소에 동명 파일이 1개뿐이면 문서가 다른 위치를 의도했더라도 존재로 판정될 수 있음 |
+| 5-B | 거부 규칙 #12~#15 추가 | 패키지명·MIME·예시 경로·API 경로 | 규칙 10·11이 세그먼트 2개 이상을 면제해 생긴 구멍을 막는다. 리스크: `text/`, `model/` 등으로 시작하는 실제 2세그먼트 폴더 경로가 MIME으로 오거부될 수 있음. #15는 문서가 선행 슬래시로 실제 경로를 적는 관행이면 그것도 거부함(이 프로젝트 문서에는 해당 사례 0건) |
+| 5-C | 접미사 중복 항목의 준수율 처리 | 현행: `missing`으로 계산 | 존재를 확인하지 못했으므로 보수적으로 집계한다. 화면에는 "후보 여러 개 · 특정 불가" 배지와 후보 목록을 함께 표시해 "진짜 없음"과 구분한다. **준수율에서 아예 제외할지는 검토 필요** |
 | 6 | 대소문자 무시 매칭 허용 | 2차 매칭으로 허용 + 배지 표시 | 판정 정확도 95% 목표에 유리하나, 엄격 일치를 원하는 사용자에겐 오탐일 수 있음 |
 | 7 | 서브모듈(`type: 'commit'`) 처리 | 파일로 취급하지 않음 | 서브모듈 경로를 기대 산출물로 적은 경우 "없음"으로 판정됨 |
 | 8 | 트리 잘림(truncated) 처리 | 결과 표시 + 경고 배너 | PRD에 규정 없음. "결과를 아예 표시하지 않음"이 더 안전할 수 있음 |
 | 9 | 검증 스트림 청크 크기 | `VERIFY_CHUNK_SIZE = 10` | 진행률 갱신 빈도. 성능 영향 미미 |
 | 10 | GitHub 호출 타임아웃 | 15초 | PRD 성능 목표와 동일값. 별도 여유를 둘지 검토 필요 |
 | 11 | 상태 새로고침 시 소실 | 브라우저 스토리지 미사용 | 보안 요구를 최우선한 결과. 새로고침 시 문서 재업로드가 필요해 완주율 70% 목표에 불리할 수 있음 |
-| 12 | `/user/repos` 엔드포인트 사용 | GitHub App user token 기준 | 앱 설치 범위에 따라 반환 결과가 달라질 수 있어, 구현 착수 시 실계정으로 동작 확인 필요 |
+| 12 | `/user/repos` 엔드포인트 사용 | 스코프 없는 사용자 토큰 기준 | 반환 범위가 공개 저장소로 한정되는지 실계정으로 동작 확인 필요 |
 
 ---
 

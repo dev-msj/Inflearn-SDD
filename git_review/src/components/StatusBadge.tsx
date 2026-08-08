@@ -21,7 +21,9 @@ import {
   Lock,
   ShieldAlert,
   ShieldCheck,
+  Split,
   TriangleAlert,
+  Waypoints,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,6 +38,8 @@ export type StatusBadgeVariant =
   | 'directory' // 산출물 종류: 폴더
   | 'unknown' // 산출물 종류: 판정 불가
   | 'case-mismatch' // 대소문자만 다른 경로로 매칭됨
+  | 'partial-path' // 앞부분이 생략된 부분 경로로 매칭됨
+  | 'ambiguous' // 후보가 여러 개라 특정 불가
   | 'warning'
   | 'info'
   | 'neutral';
@@ -106,6 +110,16 @@ const BADGE_PRESETS: Record<StatusBadgeVariant, BadgePreset> = {
   'case-mismatch': {
     icon: CaseSensitive,
     label: '대소문자 불일치',
+    tone: 'border-warning bg-warning-surface text-warning',
+  },
+  'partial-path': {
+    icon: Waypoints,
+    label: '부분 경로 매칭',
+    tone: 'border-warning bg-warning-surface text-warning',
+  },
+  ambiguous: {
+    icon: Split,
+    label: '후보 여러 개 · 특정 불가',
     tone: 'border-warning bg-warning-surface text-warning',
   },
   warning: {
