@@ -46,12 +46,15 @@ PRD와 TECH_SPEC을 기반으로 스펙에 정확히 일치하는 코드를 생�
 ```
 [Step 1] PRD.md 읽기 → 기능 요구사항 파악
 [Step 2] TECH_SPEC.md 읽기 → 구현 명세 파악
-[Step 3] 타입 정의 생성
-[Step 4] 기능 1 구현 (hooks → components → pages)
-[Step 5] 기능 2 구현
-[Step 6] 기능 3 구현
-[Step 7] 통합 확인
+[Step 3] TASK.md 읽기 → 체크리스트 및 미완료 항목 파악
+[Step 4] 타입 정의 생성
+[Step 5] 기능 1 구현 (hooks → components → pages)
+[Step 6] 기능 2 구현
+[Step 7] 기능 3 구현
+[Step 8] 통합 확인
 ```
+
+각 파일 생성 직후 `docs/TASK.md`의 해당 체크박스를 `- [x]`로 갱신합니다.
 
 ## 코드 생성 규칙
 
