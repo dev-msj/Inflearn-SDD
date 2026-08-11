@@ -61,9 +61,13 @@ ls -la src/ 2>/dev/null
 [프로젝트명]/
 ├── docs/
 │   ├── PRD.md            # → /sdd-plan에서 작성
-│   └── TECH_SPEC.md      # → /sdd-design에서 작성
+│   ├── TECH_SPEC.md      # → /sdd-design에서 작성 (마지막 장에 구현 슬라이스 계획 포함)
+│   ├── TASK.md           # → /sdd-build에서 생성 (슬라이스 인덱스)
+│   └── tasks/            # → /sdd-build에서 생성 (슬라이스별 체크리스트)
 └── src/                  # → /sdd-build에서 코드 생성
 ```
+
+> `docs/TASK.md`와 `docs/tasks/`는 `/sdd-build`가 TECH_SPEC 「구현 슬라이스 계획」 장에서 파생시키므로 초기화 시점에 만들지 않습니다.
 
 ## PRD.md 초기 내용 (파일이 없을 때만 생성)
 
@@ -81,6 +85,7 @@ ls -la src/ 2>/dev/null
 
 > 이 문서는 /sdd-design 명령으로 작성됩니다.
 > PRD.md가 먼저 작성되어야 합니다.
+> 설계 + 마지막 장의 구현 슬라이스 계획을 함께 담으며, /sdd-build가 그 장을 추출해 작업 문서를 만듭니다.
 ```
 
 ## 완료 메시지
