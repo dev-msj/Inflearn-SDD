@@ -1,0 +1,243 @@
+{
+  "app": {
+    "name": "ai_store",
+    "tagline": "검증된 AI 프롬프트 템플릿을 즉시 사용하세요"
+  },
+  "common": {
+    "loading": "불러오는 중…",
+    "retry": "다시 시도",
+    "cancel": "취소",
+    "confirm": "확인",
+    "close": "닫기",
+    "back": "뒤로",
+    "next": "다음",
+    "previous": "이전",
+    "skipToContent": "본문으로 건너뛰기",
+    "required": "필수",
+    "optional": "선택",
+    "notifications": "알림"
+  },
+  "nav": {
+    "home": "템플릿",
+    "library": "내 라이브러리",
+    "orders": "주문 내역",
+    "login": "로그인",
+    "logout": "로그아웃",
+    "signup": "회원가입",
+    "language": "언어",
+    "languageKo": "한국어",
+    "languageEn": "English",
+    "primaryLabel": "주요 메뉴",
+    "accountLabel": "계정 메뉴"
+  },
+  "footer": {
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침",
+    "refundPolicy": "환불 규정",
+    "copyright": "© {year} ai_store. All rights reserved."
+  },
+  "templates": {
+    "listTitle": "프롬프트 템플릿",
+    "listDescription": "카테고리와 검색으로 필요한 프롬프트를 찾아보세요.",
+    "searchLabel": "템플릿 검색",
+    "searchPlaceholder": "제목이나 설명으로 검색",
+    "searchSubmit": "검색",
+    "searchClear": "검색어 지우기",
+    "categoryLabel": "카테고리",
+    "categoryAll": "전체",
+    "categorySelected": "선택한 카테고리: {name}",
+    "resultCount": "총 {count}개",
+    "priceKrw": "{amount}원",
+    "priceUsd": "${amount}",
+    "priceBoth": "{krw} / {usd}",
+    "thumbnailAlt": "{title} 대표 이미지",
+    "viewDetail": "자세히 보기",
+    "pagination": {
+      "label": "페이지 이동",
+      "page": "{page} / {totalPages} 페이지",
+      "goToPage": "{page}페이지로 이동"
+    },
+    "empty": {
+      "title": "검색 결과가 없습니다",
+      "description": "다른 키워드로 검색하거나 전체 목록에서 찾아보세요.",
+      "action": "전체 목록 보기"
+    },
+    "error": {
+      "listTitle": "템플릿 목록을 불러오지 못했습니다",
+      "detailTitle": "템플릿 정보를 불러오지 못했습니다",
+      "description": "일시적인 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.",
+      "action": "다시 시도"
+    },
+    "detail": {
+      "descriptionHeading": "설명",
+      "usageGuideHeading": "사용 예시 안내",
+      "previewHeading": "미리보기",
+      "categoryHeading": "카테고리",
+      "priceHeading": "가격",
+      "buy": "구매하기",
+      "openLibrary": "라이브러리에서 보기",
+      "owned": "이미 보유한 템플릿입니다.",
+      "notPurchasable": "현재 판매하지 않는 템플릿입니다.",
+      "notPurchasableHint": "이미 구매하신 경우 내 라이브러리에서 계속 열람할 수 있습니다.",
+      "notFound": "요청하신 템플릿을 찾을 수 없습니다."
+    }
+  },
+  "preview": {
+    "heading": "미리보기",
+    "ratioNotice": "프롬프트 전문 중 앞부분 {percent}%만 표시됩니다.",
+    "maskedNotice": "나머지 {count}자는 가려져 있습니다.",
+    "lockedNotice": "구매 후 전문 열람 가능",
+    "lockedIconLabel": "잠김"
+  },
+  "auth": {
+    "loginTitle": "로그인",
+    "loginSubmit": "로그인",
+    "signupTitle": "회원가입",
+    "signupSubmit": "가입하기",
+    "emailLabel": "이메일",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "비밀번호",
+    "passwordHint": "8자 이상 입력해 주세요.",
+    "nameLabel": "이름",
+    "localeLabel": "사용 언어",
+    "toSignup": "계정이 없으신가요? 회원가입",
+    "toLogin": "이미 계정이 있으신가요? 로그인",
+    "signupSuccess": "가입이 완료되었습니다. 로그인해 주세요.",
+    "loginRequired": "로그인이 필요한 화면입니다.",
+    "errors": {
+      "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "emailTaken": "이미 가입된 이메일입니다.",
+      "invalidEmail": "이메일 형식이 올바르지 않습니다.",
+      "weakPassword": "비밀번호는 8자 이상이어야 합니다.",
+      "unknown": "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+    }
+  },
+  "checkout": {
+    "title": "결제",
+    "templateHeading": "구매 템플릿",
+    "currencyHeading": "결제 통화 선택",
+    "currencyHint": "결제할 통화를 직접 선택해 주세요. 접속 지역으로 자동 결정하지 않습니다.",
+    "currencyKrw": "KRW (원화)",
+    "currencyUsd": "USD (미국 달러)",
+    "currencyKrwProvider": "토스페이먼츠로 결제",
+    "currencyUsdProvider": "Paddle로 결제",
+    "currencyNotSelected": "결제 통화를 선택해 주세요.",
+    "amountHeading": "최종 결제 금액",
+    "amountNotice": "이 화면에 표시된 금액으로 결제됩니다.",
+    "submit": "결제 진행",
+    "processing": "결제창을 여는 중…",
+    "alreadyOwnedTitle": "이미 보유한 템플릿입니다",
+    "alreadyOwnedDescription": "내 라이브러리에서 바로 전문을 열람할 수 있습니다.",
+    "alreadyOwnedAction": "내 라이브러리로 이동",
+    "notPurchasable": "현재 판매하지 않는 템플릿입니다.",
+    "expiresNotice": "결제 화면 진입 후 {minutes}분 안에 결제를 완료해 주세요.",
+    "status": {
+      "title": "결제 확인 중",
+      "description": "결제 승인 통지를 확인하고 있습니다. 이 화면은 자동으로 갱신됩니다.",
+      "delayNotice": "확인 중입니다. 최대 24시간 내에 처리됩니다.",
+      "paid": "결제가 완료되었습니다. 라이브러리로 이동합니다.",
+      "failed": "결제가 완료되지 않았습니다.",
+      "expired": "결제 시도가 만료되었습니다. 처음부터 다시 진행해 주세요.",
+      "retry": "다시 결제하기",
+      "goLibrary": "내 라이브러리로 이동",
+      "liveRegionLabel": "주문 상태"
+    }
+  },
+  "refundPolicy": {
+    "heading": "환불 규정 안내",
+    "body": "디지털 콘텐츠 특성상 구매일로부터 {days}일 이내이면서 프롬프트 전문을 아직 열람하거나 다운로드하지 않은 경우에만 환불이 접수됩니다. 전문을 한 번이라도 열람·다운로드하면 청약철회가 제한됩니다.",
+    "consentLabel": "위 환불 규정을 확인했으며 이에 동의합니다.",
+    "consentRequired": "환불 규정에 동의해야 결제를 진행할 수 있습니다."
+  },
+  "order": {
+    "title": "주문 상세",
+    "orderNo": "주문 번호",
+    "template": "템플릿",
+    "amount": "결제 금액",
+    "currency": "결제 통화",
+    "paidAt": "결제 일시",
+    "statusLabel": "주문 상태",
+    "failureReason": "실패 사유",
+    "status": {
+      "PENDING": "결제 대기",
+      "CONFIRMING": "결제 확인 중",
+      "PAID": "결제 완료",
+      "FAILED": "결제 실패",
+      "EXPIRED": "만료됨",
+      "REFUND_REQUESTED": "환불 요청됨",
+      "REFUNDED": "환불 완료"
+    },
+    "notFound": "주문을 찾을 수 없습니다."
+  },
+  "refundRequest": {
+    "title": "환불 요청",
+    "reasonCodeLabel": "환불 사유",
+    "reasonTextLabel": "상세 사유",
+    "reasonTextPlaceholder": "필요한 경우 자세한 내용을 입력해 주세요.",
+    "submit": "환불 요청하기",
+    "submitted": "환불 요청이 접수되었습니다.",
+    "reasonCodes": {
+      "NOT_AS_DESCRIBED": "설명과 다름",
+      "MISTAKEN_PURCHASE": "실수로 구매함",
+      "OTHER": "기타"
+    },
+    "ineligible": {
+      "ORDER_NOT_PAID": "결제가 완료된 주문만 환불을 요청할 수 있습니다.",
+      "WINDOW_EXPIRED": "구매일로부터 {days}일이 지나 환불을 접수할 수 없습니다.",
+      "ALREADY_VIEWED": "전문을 이미 열람하여 환불을 접수할 수 없습니다.",
+      "ALREADY_DOWNLOADED": "전문을 이미 다운로드하여 환불을 접수할 수 없습니다.",
+      "ALREADY_REQUESTED": "이미 접수된 환불 요청이 있습니다."
+    }
+  },
+  "library": {
+    "title": "내 라이브러리",
+    "description": "구매한 프롬프트 전문을 언제든 열람하고 복사·다운로드할 수 있습니다.",
+    "grantedAt": "구매일",
+    "openViewer": "전문 열람",
+    "empty": {
+      "title": "아직 구매한 템플릿이 없습니다",
+      "description": "마음에 드는 프롬프트 템플릿을 찾아보세요.",
+      "action": "템플릿 둘러보기"
+    },
+    "viewer": {
+      "heading": "프롬프트 전문",
+      "bodyUpdatedAt": "마지막 수정일: {date}",
+      "copy": "전체 복사",
+      "copied": "전문이 클립보드에 복사되었습니다.",
+      "copyFailed": "복사에 실패했습니다. 직접 선택해 복사해 주세요.",
+      "download": "다운로드",
+      "downloadHint": "텍스트 파일(.txt)로 저장됩니다."
+    },
+    "denied": {
+      "notOwnedTitle": "구매하지 않은 템플릿입니다",
+      "notOwnedDescription": "전문 열람은 구매 후에 가능합니다. 상세 페이지에서 내용을 확인해 주세요.",
+      "notOwnedAction": "상세 페이지로 이동",
+      "refundedTitle": "환불 처리된 템플릿입니다",
+      "refundedDescription": "환불이 완료되어 전문을 열람할 수 없습니다."
+    }
+  },
+  "errors": {
+    "title": "문제가 발생했습니다",
+    "description": "잠시 후 다시 시도해 주세요.",
+    "notFoundTitle": "페이지를 찾을 수 없습니다",
+    "notFoundDescription": "주소가 올바른지 확인해 주세요.",
+    "notFoundAction": "템플릿 목록으로 이동",
+    "codes": {
+      "VALIDATION_ERROR": "입력값을 확인해 주세요.",
+      "UNAUTHORIZED": "로그인이 필요합니다.",
+      "FORBIDDEN": "접근 권한이 없습니다.",
+      "NOT_FOUND": "요청한 정보를 찾을 수 없습니다.",
+      "TEMPLATE_NOT_FOUND": "템플릿을 찾을 수 없습니다.",
+      "TEMPLATE_NOT_PURCHASABLE": "현재 판매하지 않는 템플릿입니다.",
+      "ALREADY_OWNED": "이미 보유한 템플릿입니다.",
+      "POLICY_NOT_AGREED": "환불 규정에 동의해야 결제를 진행할 수 있습니다.",
+      "EMAIL_TAKEN": "이미 가입된 이메일입니다.",
+      "ORDER_NOT_FOUND": "주문을 찾을 수 없습니다.",
+      "INVALID_ORDER_TRANSITION": "현재 주문 상태에서는 처리할 수 없는 요청입니다.",
+      "REFUND_INELIGIBLE": "환불 조건을 충족하지 않습니다.",
+      "AMOUNT_MISMATCH": "결제 금액이 일치하지 않아 확인이 필요합니다.",
+      "PROVIDER_API_ERROR": "결제사와 통신하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "INTERNAL_ERROR": "일시적인 오류가 발생했습니다."
+    }
+  }
+}

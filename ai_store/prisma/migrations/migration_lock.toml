@@ -1,0 +1,3 @@
+# Prisma가 마이그레이션 폴더의 대상 DB 종류를 판별하기 위해 요구하는 잠금 파일.
+# 이 파일이 없으면 `prisma migrate deploy`가 마이그레이션 디렉터리를 인식하지 못한다.
+provider = "postgresql"

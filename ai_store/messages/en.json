@@ -1,0 +1,243 @@
+{
+  "app": {
+    "name": "ai_store",
+    "tagline": "Proven AI prompt templates, ready to use"
+  },
+  "common": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "skipToContent": "Skip to content",
+    "required": "Required",
+    "optional": "Optional",
+    "notifications": "Notifications"
+  },
+  "nav": {
+    "home": "Templates",
+    "library": "My library",
+    "orders": "Orders",
+    "login": "Log in",
+    "logout": "Log out",
+    "signup": "Sign up",
+    "language": "Language",
+    "languageKo": "한국어",
+    "languageEn": "English",
+    "primaryLabel": "Primary",
+    "accountLabel": "Account"
+  },
+  "footer": {
+    "terms": "Terms of service",
+    "privacy": "Privacy policy",
+    "refundPolicy": "Refund policy",
+    "copyright": "© {year} ai_store. All rights reserved."
+  },
+  "templates": {
+    "listTitle": "Prompt templates",
+    "listDescription": "Find the prompt you need by category or keyword.",
+    "searchLabel": "Search templates",
+    "searchPlaceholder": "Search by title or description",
+    "searchSubmit": "Search",
+    "searchClear": "Clear search",
+    "categoryLabel": "Category",
+    "categoryAll": "All",
+    "categorySelected": "Selected category: {name}",
+    "resultCount": "{count} results",
+    "priceKrw": "KRW {amount}",
+    "priceUsd": "${amount}",
+    "priceBoth": "{krw} / {usd}",
+    "thumbnailAlt": "Cover image of {title}",
+    "viewDetail": "View details",
+    "pagination": {
+      "label": "Pagination",
+      "page": "Page {page} of {totalPages}",
+      "goToPage": "Go to page {page}"
+    },
+    "empty": {
+      "title": "No results found",
+      "description": "Try a different keyword, or browse the full list.",
+      "action": "View all templates"
+    },
+    "error": {
+      "listTitle": "Could not load the template list",
+      "detailTitle": "Could not load the template",
+      "description": "This may be temporary. Please try again in a moment.",
+      "action": "Try again"
+    },
+    "detail": {
+      "descriptionHeading": "Description",
+      "usageGuideHeading": "How to use",
+      "previewHeading": "Preview",
+      "categoryHeading": "Category",
+      "priceHeading": "Price",
+      "buy": "Buy now",
+      "openLibrary": "Open in my library",
+      "owned": "You already own this template.",
+      "notPurchasable": "This template is not on sale.",
+      "notPurchasableHint": "If you already purchased it, you can still read it in your library.",
+      "notFound": "The requested template could not be found."
+    }
+  },
+  "preview": {
+    "heading": "Preview",
+    "ratioNotice": "Only the first {percent}% of the full prompt is shown.",
+    "maskedNotice": "The remaining {count} characters are hidden.",
+    "lockedNotice": "Full prompt available after purchase",
+    "lockedIconLabel": "Locked"
+  },
+  "auth": {
+    "loginTitle": "Log in",
+    "loginSubmit": "Log in",
+    "signupTitle": "Sign up",
+    "signupSubmit": "Create account",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "Password",
+    "passwordHint": "Use at least 8 characters.",
+    "nameLabel": "Name",
+    "localeLabel": "Language",
+    "toSignup": "Don't have an account? Sign up",
+    "toLogin": "Already have an account? Log in",
+    "signupSuccess": "Your account is ready. Please log in.",
+    "loginRequired": "You need to log in to view this page.",
+    "errors": {
+      "invalidCredentials": "The email or password is incorrect.",
+      "emailTaken": "This email is already registered.",
+      "invalidEmail": "Please enter a valid email address.",
+      "weakPassword": "Password must be at least 8 characters.",
+      "unknown": "We could not process your request. Please try again."
+    }
+  },
+  "checkout": {
+    "title": "Checkout",
+    "templateHeading": "Template",
+    "currencyHeading": "Choose a payment currency",
+    "currencyHint": "Pick the currency yourself. We never decide it from your location.",
+    "currencyKrw": "KRW (Korean won)",
+    "currencyUsd": "USD (US dollar)",
+    "currencyKrwProvider": "Pay with Toss Payments",
+    "currencyUsdProvider": "Pay with Paddle",
+    "currencyNotSelected": "Please choose a payment currency.",
+    "amountHeading": "Total due",
+    "amountNotice": "You will be charged the amount shown on this screen.",
+    "submit": "Continue to payment",
+    "processing": "Opening the payment window…",
+    "alreadyOwnedTitle": "You already own this template",
+    "alreadyOwnedDescription": "You can read the full prompt in your library right away.",
+    "alreadyOwnedAction": "Go to my library",
+    "notPurchasable": "This template is not on sale.",
+    "expiresNotice": "Please complete the payment within {minutes} minutes.",
+    "status": {
+      "title": "Confirming payment",
+      "description": "We are verifying the payment notification. This page refreshes automatically.",
+      "delayNotice": "Still confirming. This will be resolved within 24 hours.",
+      "paid": "Payment complete. Taking you to your library.",
+      "failed": "The payment was not completed.",
+      "expired": "This payment attempt expired. Please start again.",
+      "retry": "Try payment again",
+      "goLibrary": "Go to my library",
+      "liveRegionLabel": "Order status"
+    }
+  },
+  "refundPolicy": {
+    "heading": "Refund policy",
+    "body": "Because this is digital content, a refund can only be requested within {days} days of purchase and only if you have not yet viewed or downloaded the full prompt. Once the full prompt has been viewed or downloaded, the right of withdrawal is limited.",
+    "consentLabel": "I have read and agree to the refund policy above.",
+    "consentRequired": "You must agree to the refund policy before paying."
+  },
+  "order": {
+    "title": "Order details",
+    "orderNo": "Order number",
+    "template": "Template",
+    "amount": "Amount",
+    "currency": "Currency",
+    "paidAt": "Paid at",
+    "statusLabel": "Order status",
+    "failureReason": "Failure reason",
+    "status": {
+      "PENDING": "Awaiting payment",
+      "CONFIRMING": "Confirming payment",
+      "PAID": "Paid",
+      "FAILED": "Payment failed",
+      "EXPIRED": "Expired",
+      "REFUND_REQUESTED": "Refund requested",
+      "REFUNDED": "Refunded"
+    },
+    "notFound": "The order could not be found."
+  },
+  "refundRequest": {
+    "title": "Request a refund",
+    "reasonCodeLabel": "Reason",
+    "reasonTextLabel": "Details",
+    "reasonTextPlaceholder": "Add more detail if needed.",
+    "submit": "Submit refund request",
+    "submitted": "Your refund request has been received.",
+    "reasonCodes": {
+      "NOT_AS_DESCRIBED": "Not as described",
+      "MISTAKEN_PURCHASE": "Purchased by mistake",
+      "OTHER": "Other"
+    },
+    "ineligible": {
+      "ORDER_NOT_PAID": "Only paid orders can be refunded.",
+      "WINDOW_EXPIRED": "More than {days} days have passed since purchase.",
+      "ALREADY_VIEWED": "The full prompt has already been viewed.",
+      "ALREADY_DOWNLOADED": "The full prompt has already been downloaded.",
+      "ALREADY_REQUESTED": "A refund request is already in progress."
+    }
+  },
+  "library": {
+    "title": "My library",
+    "description": "Read, copy and download your purchased prompts any time.",
+    "grantedAt": "Purchased",
+    "openViewer": "Open full prompt",
+    "empty": {
+      "title": "You haven't purchased any templates yet",
+      "description": "Browse the catalog and find a prompt that fits you.",
+      "action": "Browse templates"
+    },
+    "viewer": {
+      "heading": "Full prompt",
+      "bodyUpdatedAt": "Last updated: {date}",
+      "copy": "Copy all",
+      "copied": "The full prompt was copied to your clipboard.",
+      "copyFailed": "Copy failed. Please select the text and copy manually.",
+      "download": "Download",
+      "downloadHint": "Saved as a plain text (.txt) file."
+    },
+    "denied": {
+      "notOwnedTitle": "You have not purchased this template",
+      "notOwnedDescription": "The full prompt is available after purchase. Check the details page first.",
+      "notOwnedAction": "Go to the details page",
+      "refundedTitle": "This template was refunded",
+      "refundedDescription": "The refund is complete, so the full prompt is no longer available."
+    }
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "description": "Please try again in a moment.",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "Please check that the address is correct.",
+    "notFoundAction": "Go to templates",
+    "codes": {
+      "VALIDATION_ERROR": "Please check your input.",
+      "UNAUTHORIZED": "You need to log in.",
+      "FORBIDDEN": "You do not have access to this resource.",
+      "NOT_FOUND": "The requested resource was not found.",
+      "TEMPLATE_NOT_FOUND": "The template could not be found.",
+      "TEMPLATE_NOT_PURCHASABLE": "This template is not on sale.",
+      "ALREADY_OWNED": "You already own this template.",
+      "POLICY_NOT_AGREED": "You must agree to the refund policy before paying.",
+      "EMAIL_TAKEN": "This email is already registered.",
+      "ORDER_NOT_FOUND": "The order could not be found.",
+      "INVALID_ORDER_TRANSITION": "This request is not allowed for the current order status.",
+      "REFUND_INELIGIBLE": "This order does not meet the refund conditions.",
+      "AMOUNT_MISMATCH": "The paid amount does not match the order and needs review.",
+      "PROVIDER_API_ERROR": "We could not reach the payment provider. Please try again.",
+      "INTERNAL_ERROR": "A temporary error occurred."
+    }
+  }
+}
