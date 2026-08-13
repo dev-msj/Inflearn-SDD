@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+/* 디자인 토큰 — Tailwind v4 `@theme`. 컴포넌트 라이브러리 미도입(TECH_SPEC 1) */
+@theme {
+  /* 색 */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-border-subtle: #e2e8f0;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-danger-surface: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-warn: #b45309;
+  --color-warn-surface: #fffbeb;
+  --color-warn-border: #fde68a;
+  --color-success: #15803d;
+
+  /* 간격 (섹션 리듬) */
+  --spacing-section: 2rem;
+  --spacing-panel: 1.25rem;
+
+  /* 반경 */
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-surface-muted);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 키보드 포커스 가시성 (접근성) */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
