@@ -46,3 +46,12 @@ export const LOW_ACTIVITY_THRESHOLD = 5;
 /** GitHub 공개 이벤트 수집 상한 (C2: Events API 300건) */
 export const GITHUB_EVENTS_PER_PAGE = 100;
 export const GITHUB_EVENTS_MAX_PAGES = 3;
+
+/**
+ * 저장소별 커밋 조회 상한.
+ *
+ * Events API 의 `PushEvent` payload 에는 `commits` 배열이 없다(키는 repository_id/push_id/ref/head/before 뿐).
+ * 따라서 커밋 메시지는 `GET /repos/{owner}/{repo}/commits` 로 별도 조회한다.
+ */
+export const REPO_COMMITS_PER_PAGE = 100;
+export const REPO_COMMITS_MAX_PAGES = 2;

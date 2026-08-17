@@ -8,7 +8,15 @@ import 'server-only';
  *   타입 체크·빌드가 불가능해지므로 lazy getter 로 구현한다.
  */
 
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+/**
+ * 기본 모델은 **별칭**을 쓴다.
+ *
+ * 고정 버전(`gemini-2.5-flash`)을 박아두면 그 모델이 은퇴하는 순간
+ * `404 ... no longer available to new users` 로 분석·생성 기능 전체가 멈춘다(2026-08 실제 발생).
+ * `-latest` 별칭은 현행 flash 모델을 따라가므로 같은 방식으로 깨지지 않는다.
+ * 특정 버전에 고정해야 하면 `GEMINI_MODEL` 로 덮어쓸 수 있다.
+ */
+const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
 const MIN_SESSION_SECRET_LENGTH = 32;
 
 function read(name: string): string | undefined {

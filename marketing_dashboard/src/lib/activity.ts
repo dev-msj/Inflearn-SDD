@@ -1,5 +1,5 @@
 import { firstLine } from '@/lib/utils';
-import type { GitHubEvent } from '@/lib/github';
+import type { GitHubEvent, GitHubRepoCommit } from '@/lib/github';
 import type {
   ActivityCounts,
   ActivitySummary,
@@ -56,6 +56,50 @@ function dedupeByLatest<T extends { repo: string; number: number; occurredAt: st
   return [...latest.values()];
 }
 
+/** 기간 필터를 통과하는 이벤트인지 (`created_at >= from`) */
+function withinPeriod(occurredAt: string, fromMs: number): boolean {
+  const parsed = Date.parse(occurredAt);
+  return Number.isFinite(parsed) && parsed >= fromMs;
+}
+
+/**
+ * 기간 내 `PushEvent` 가 발생한 저장소 목록(중복 제거·사전순).
+ *
+ * 커밋 본문은 Events API 에 없으므로, 호출자가 이 목록으로
+ * `GET /repos/{owner}/{repo}/commits` 를 돌아 커밋을 채운다.
+ */
+export function collectPushedRepositories(events: GitHubEvent[], period: ActivityPeriod): string[] {
+  const fromMs = period.from.getTime();
+  const repositories = new Set<string>();
+
+  for (const event of events) {
+    if (event.type !== EVENT_TYPE.push) continue;
+    if (!withinPeriod(event.created_at, fromMs)) continue;
+
+    const repo = event.repo?.name ?? '';
+    if (repo !== '') repositories.add(repo);
+  }
+
+  return [...repositories].sort((a, b) => a.localeCompare(b));
+}
+
+/** `GET /repos/{owner}/{repo}/commits` 응답 → 도메인 커밋 활동 */
+export function toCommitActivities(repo: string, commits: GitHubRepoCommit[]): CommitActivity[] {
+  return commits.flatMap((commit) => {
+    const occurredAt = commit.commit?.author?.date ?? '';
+    if (typeof commit.sha !== 'string' || commit.sha === '' || occurredAt === '') return [];
+
+    return [
+      {
+        sha: commit.sha,
+        message: firstLine(commit.commit?.message ?? ''),
+        repo,
+        occurredAt,
+      },
+    ];
+  });
+}
+
 /** `PullRequestEvent` 의 action·merged 조합 → 도메인 상태. 그 외 action 은 무시 */
 function toPullRequestState(payloadAction: string | undefined, merged: boolean): PullRequestActivity['state'] | null {
   if (payloadAction === 'opened') return 'opened';
@@ -63,15 +107,23 @@ function toPullRequestState(payloadAction: string | undefined, merged: boolean):
   return null;
 }
 
-/** GitHub 이벤트 배열을 기간 필터링·분류·집계해 `ActivitySummary` 로 변환한다 */
+/**
+ * GitHub 이벤트 + 별도 조회한 커밋을 기간 필터링·분류·집계해 `ActivitySummary` 로 변환한다.
+ *
+ * 커밋을 **인자로 받는** 이유: Events API 의 `PushEvent` payload 에 커밋이 없어
+ * `GET /repos/{owner}/{repo}/commits` 를 따로 호출해야 하는데,
+ * 이 함수는 네트워크를 모르는 순수 함수로 유지해야 하기 때문이다.
+ */
 export function buildActivitySummary(
   events: GitHubEvent[],
+  repoCommits: CommitActivity[],
   period: ActivityPeriod,
   truncated: boolean,
 ): ActivitySummary {
   const fromMs = period.from.getTime();
 
-  const commits: CommitActivity[] = [];
+  // 커밋도 같은 기간 규칙을 적용한다 (조회 시 since/until 을 걸지만 방어적으로 한 번 더)
+  const commits = repoCommits.filter((commit) => withinPeriod(commit.occurredAt, fromMs));
   const rawPullRequests: PullRequestActivity[] = [];
   const rawIssues: IssueActivity[] = [];
   const stars: StarActivity[] = [];
@@ -79,23 +131,14 @@ export function buildActivitySummary(
   for (const event of events) {
     const occurredAt = event.created_at;
     // 기간 필터: created_at >= from
-    if (!Number.isFinite(Date.parse(occurredAt)) || Date.parse(occurredAt) < fromMs) continue;
+    if (!withinPeriod(occurredAt, fromMs)) continue;
 
     const repo = event.repo?.name ?? '';
     if (repo === '') continue;
 
     switch (event.type) {
-      case EVENT_TYPE.push: {
-        for (const commit of event.payload.commits ?? []) {
-          commits.push({
-            sha: commit.sha,
-            message: firstLine(commit.message ?? ''),
-            repo,
-            occurredAt,
-          });
-        }
-        break;
-      }
+      // PushEvent 는 여기서 처리하지 않는다 — payload 에 커밋이 없어
+      // `collectPushedRepositories` → `fetchRepoCommits` 경로로 대체됐다
 
       case EVENT_TYPE.pullRequest: {
         const pullRequest = event.payload.pull_request;

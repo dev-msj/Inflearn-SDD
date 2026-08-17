@@ -1,6 +1,11 @@
 import 'server-only';
 import { ApiException } from '@/lib/api-error';
-import { GITHUB_EVENTS_MAX_PAGES, GITHUB_EVENTS_PER_PAGE } from '@/lib/constants';
+import {
+  GITHUB_EVENTS_MAX_PAGES,
+  GITHUB_EVENTS_PER_PAGE,
+  REPO_COMMITS_MAX_PAGES,
+  REPO_COMMITS_PER_PAGE,
+} from '@/lib/constants';
 import { env } from '@/lib/env';
 import type { ApiErrorCode } from '@/types/api';
 
@@ -31,10 +36,17 @@ export interface GitHubUser {
   avatar_url: string;
 }
 
-/** 이벤트 payload 중 집계에 필요한 필드만 선언한다 */
-export interface GitHubEventCommit {
+/**
+ * `GET /repos/{owner}/{repo}/commits` 응답 중 집계에 필요한 필드만 선언한다.
+ *
+ * Events API 의 `PushEvent` payload 에서 커밋 목록이 제거되어, 커밋 메시지는 이 엔드포인트로 얻는다.
+ */
+export interface GitHubRepoCommit {
   sha: string;
-  message: string;
+  commit: {
+    message: string;
+    author: { date?: string } | null;
+  };
 }
 
 export interface GitHubEventPullRequest {
@@ -50,9 +62,14 @@ export interface GitHubEventIssue {
   html_url: string;
 }
 
+/**
+ * 이벤트 payload 중 집계에 필요한 필드만 선언한다.
+ *
+ * `PushEvent` 는 더 이상 커밋 목록을 담지 않는다 — 실제 payload 키는
+ * `repository_id / push_id / ref / head / before` 뿐이다. 커밋은 `fetchRepoCommits` 로 따로 가져온다.
+ */
 export interface GitHubEventPayload {
   action?: string;
-  commits?: GitHubEventCommit[];
   pull_request?: GitHubEventPullRequest;
   issue?: GitHubEventIssue;
 }
@@ -219,4 +236,51 @@ export async function fetchPublicEvents(
   }
 
   return { events, truncated: true };
+}
+
+/**
+ * 한 저장소에서 지정 기간·작성자의 커밋을 수집한다.
+ *
+ * `PushEvent` payload 에 커밋이 없으므로(위 주석 참조) 커밋 메시지는 여기서만 얻을 수 있다.
+ * 저장소가 삭제·비공개 전환됐거나 비어 있으면 **그 저장소만 건너뛴다**(빈 배열).
+ * 다만 토큰 무효·rate limit 은 전체 조회를 무의미하게 만들므로 그대로 던진다 (AC-1.8).
+ */
+export async function fetchRepoCommits(
+  accessToken: string,
+  repo: string,
+  login: string,
+  since: Date,
+  until: Date,
+): Promise<GitHubRepoCommit[]> {
+  const commits: GitHubRepoCommit[] = [];
+
+  for (let page = 1; page <= REPO_COMMITS_MAX_PAGES; page += 1) {
+    const url = new URL(`${GITHUB_API_BASE}/repos/${repo}/commits`);
+    url.searchParams.set('author', login);
+    url.searchParams.set('since', since.toISOString());
+    url.searchParams.set('until', until.toISOString());
+    url.searchParams.set('per_page', String(REPO_COMMITS_PER_PAGE));
+    url.searchParams.set('page', String(page));
+
+    const res = await fetch(url, {
+      headers: githubHeaders(accessToken),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const code = classifyGitHubError(res);
+      // 이 저장소만의 문제(404 삭제·비공개 전환, 409 빈 저장소 등)는 무시하고 나머지를 살린다
+      if (code === 'GITHUB_ERROR') return commits;
+      throw new ApiException(code);
+    }
+
+    const batch = (await res.json()) as unknown;
+    if (!Array.isArray(batch) || batch.length === 0) return commits;
+
+    commits.push(...(batch as GitHubRepoCommit[]));
+
+    if (batch.length < REPO_COMMITS_PER_PAGE) return commits;
+  }
+
+  return commits;
 }

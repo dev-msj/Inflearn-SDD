@@ -61,7 +61,7 @@ export interface LocalSnapshot {
 | Session | `iron-session` | 8.0+ | DB 없음(PRD 6.4). AES-GCM 암호화된 stateless 쿠키 하나로 GitHub 액세스 토큰을 서버에서만 다룰 수 있음. next-auth 대비 설정 표면이 작고 화이트리스트 로직을 콜백에 직접 넣기 쉬움 |
 | GitHub API | `fetch` (내장) + 자체 얇은 클라이언트 | - | 사용 엔드포인트가 2개(`/user`, `/users/{login}/events/public`)뿐. Octokit 도입 이득 없음. rate limit 헤더 해석을 직접 제어해야 AC-1.8 오류 구분이 정확해짐 |
 | AI | `@google/genai` (Google Gen AI SDK) | 1.x | PRD 명시 Gemini API. `responseMimeType: application/json` + `responseSchema` 구조화 출력으로 AC-2.2/AC-3.2 파싱 실패 위험 제거 |
-| AI Model | `gemini-2.5-flash` | - | 분석·생성 모두 30~45초 목표(M6/M7) 충족에 유리한 지연·비용 균형. `GEMINI_MODEL` 환경변수로 교체 가능 |
+| AI Model | `gemini-flash-latest` (별칭) | - | 분석·생성 모두 30~45초 목표(M6/M7) 충족에 유리한 지연·비용 균형(실측 4.1초). **고정 버전을 쓰지 않는다** — `gemini-2.5-flash` 를 박아뒀더니 해당 모델이 신규 사용자에게 차단되면서 `404 no longer available to new users` 로 F2·F3 전체가 멈췄다(2026-08). 별칭은 현행 flash 모델을 따라가므로 같은 방식으로 깨지지 않는다. 특정 버전 고정이 필요하면 `GEMINI_MODEL` 로 덮어쓴다 |
 | Validation | `zod` | 4.x | Route Handler 요청 본문과 Gemini JSON 응답을 같은 스키마 소스로 검증. 도메인 타입의 단일 출처 |
 | State | React Context + `useState`/`useReducer` | - | 1인 사용자·단일 페이지. 외부 상태 라이브러리 불필요 |
 | Storage | `localStorage` (스냅샷 1개) + 암호화 쿠키 세션 | - | PRD 6.4: DB 미사용 |
@@ -80,7 +80,7 @@ export interface LocalSnapshot {
 | `SESSION_SECRET` | ✅ | iron-session 암호화 키. 32자 이상 |
 | `ALLOWED_GITHUB_LOGINS` | ⭕ | 쉼표 구분 로그인 ID 화이트리스트. **비우면 전체 허용**(로컬 전용 모드) — Q7 |
 | `GEMINI_API_KEY` | ✅ | Gemini API 키 |
-| `GEMINI_MODEL` | ⭕ | 기본값 `gemini-2.5-flash` |
+| `GEMINI_MODEL` | ⭕ | 기본값 `gemini-flash-latest` (별칭). 고정 버전은 은퇴 시 404 로 기능이 멈추므로 필요할 때만 지정 |
 
 ---
 
@@ -318,6 +318,20 @@ export async function fetchPublicEvents(
   since: Date,
 ): Promise<{ events: GitHubEvent[]; truncated: boolean }>;
 
+/**
+ * 한 저장소의 기간·작성자 커밋 수집. `PushEvent` payload 에 커밋이 없어 반드시 필요하다.
+ * 404(삭제·비공개 전환)·409(빈 저장소) 등 저장소 국소 실패는 빈 배열로 흡수하고,
+ * 토큰 무효·rate limit 은 그대로 던진다 (AC-1.8).
+ * `GET /repos/{owner}/{repo}/commits?author={login}&since=&until=&per_page=100` (최대 2페이지)
+ */
+export async function fetchRepoCommits(
+  accessToken: string,
+  repo: string,
+  login: string,
+  since: Date,
+  until: Date,
+): Promise<GitHubRepoCommit[]>;
+
 /** 응답 상태·헤더로 실패 원인을 ApiErrorCode로 분류 (AC-1.8) */
 export function classifyGitHubError(res: Response): ApiErrorCode;
 //  401                                   → 'GITHUB_TOKEN_INVALID'
@@ -331,9 +345,19 @@ export function classifyGitHubError(res: Response): ApiErrorCode;
 **집계 함수** (`src/lib/activity.ts` — 순수 함수, 테스트 대상):
 
 ```typescript
-/** GitHub 이벤트 배열을 기간 필터링·분류·집계해 ActivitySummary로 변환 */
+/** 기간 내 PushEvent 가 발생한 저장소 목록(중복 제거·사전순) — 2단계 커밋 조회 대상 */
+export function collectPushedRepositories(events: GitHubEvent[], period: ActivityPeriod): string[];
+
+/** GET /repos/{o}/{r}/commits 응답 → 도메인 커밋 활동 (message 는 첫 줄만) */
+export function toCommitActivities(repo: string, commits: GitHubRepoCommit[]): CommitActivity[];
+
+/**
+ * 이벤트 + **별도 조회한 커밋**을 기간 필터링·분류·집계해 ActivitySummary로 변환.
+ * 커밋을 인자로 받는 이유: 커밋 조회에 네트워크가 필요한데 이 함수는 순수 함수로 유지해야 하기 때문.
+ */
 export function buildActivitySummary(
   events: GitHubEvent[],
+  repoCommits: CommitActivity[],
   period: { days: PeriodDays; from: Date; to: Date },
   truncated: boolean,
 ): ActivitySummary;
@@ -341,9 +365,14 @@ export function buildActivitySummary(
 
 이벤트 매핑 규칙:
 
+> ⚠️ **Events API 계약 주의 (2026-08 확인)**: `PushEvent` 의 payload 에는 **커밋 목록이 없다.**
+> 실제 키는 `repository_id / push_id / ref / head / before` 뿐이며, 공개 이벤트 파이어호스(`GET /events`) 표본 94건 전부 동일했다.
+> 따라서 커밋·커밋 메시지는 이벤트에서 얻을 수 없고 아래 **2단계 수집**으로 채운다.
+> (`IssuesEvent`·`PullRequestEvent` 의 payload 는 종전대로 `action`/`issue`/`pull_request` 를 담는다.)
+
 | GitHub 이벤트 | 조건 | 산출 |
 |---|---|---|
-| `PushEvent` | `payload.commits[]` | `CommitActivity` (sha, message 첫 줄, repo.name) |
+| `PushEvent` | 기간 내 발생 | **저장소명만** 수집 → `collectPushedRepositories()` (커밋 본문은 2단계에서) |
 | `PullRequestEvent` | `action==='opened'` | `state: 'opened'` |
 | `PullRequestEvent` | `action==='closed' && payload.pull_request.merged` | `state: 'merged'` |
 | `PullRequestEvent` | `action==='closed' && !merged` | `state: 'closed'` |
@@ -361,7 +390,8 @@ export function buildActivitySummary(
 |---|---|
 | 요청 | `?period=7\|30\|90` (`periodDaysSchema`로 검증, 미지정·불량 시 `400 INVALID_REQUEST`) |
 | 인증 | `requireSession()` — 미로그인 `401 UNAUTHORIZED` |
-| 처리 | `from = now - period일` → `fetchPublicEvents` → `buildActivitySummary` |
+| 처리 | `from = now - period일` → `fetchPublicEvents` → `collectPushedRepositories` → 저장소별 `fetchRepoCommits` **병렬**(`Promise.allSettled`) → `toCommitActivities` → `buildActivitySummary` |
+| 부분 실패 | 개별 저장소 실패는 그 저장소만 제외하고 진행. `ApiException`(토큰 무효·rate limit)이 하나라도 있으면 전체를 그 코드로 실패시킨다 |
 | 응답 200 | `{ activity: ActivitySummary }` |
 | 응답 4xx/5xx | `{ error: { code, message, retryable } }` — 코드는 `classifyGitHubError` 결과 |
 
@@ -498,6 +528,8 @@ export async function generateStructured<T>(params: GenerateStructuredParams<T>)
 - 구현: `new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })` 싱글턴 → `ai.models.generateContent({ model: env.GEMINI_MODEL, contents: prompt, config: { responseMimeType: 'application/json', responseSchema, temperature, abortSignal } })`.
 - 타임아웃: `AbortController` + `setTimeout(timeoutMs)` 을 `Promise.race`로 이중 적용 → SDK가 signal을 무시해도 반드시 끊긴다 (AC-2.5).
 - JSON 파싱 실패 또는 zod 검증 실패 시 **1회만** 재요청, 재실패하면 `AI_ERROR`.
+- **일시적 실패(429/500/502/503/504)는 지수 백오프 + 지터로 최대 4회 재시도**한다. 재시도 판정을 위해 `requestText` 는 해당 실패만 `TransientAiError` 로 구분해 던진다(원본 메시지는 여전히 버린다 — AC-2.7). 모든 대기·재시도는 `deadline` 예산 안에서만 이뤄지므로 AC-2.5 의 60초 상한을 넘지 않는다. 확정 실패(400/401/404 등)는 재시도하지 않고 즉시 `AI_ERROR`.
+- **실패 원인은 서버 로그에 남긴다**(`logFailure`). 사용자 응답에는 AC-2.7 때문에 원본을 감추는데, 그것만으로는 "모델 은퇴로 404" 같은 원인이 어디에도 안 남아 진단이 불가능했다. 로그는 서버 전용이며 API 키는 `[REDACTED]` 로 치환한다.
 - **`timeoutMs` 는 호출 1회가 아니라 `generateStructured` 전체의 상한이다.** 진입 시 `deadline = now + timeoutMs` 를 잡고 매 시도에 남은 시간만 넘긴다. 재시도가 각자 새 60초를 받으면 사용자 체감 대기가 120초까지 늘어나 AC-2.5의 "60초 초과 시 중단" 보증이 깨진다. 남은 예산이 0 이하면 재시도하지 않고 `AI_TIMEOUT`.
 - 상수: `ANALYSIS_TIMEOUT_MS = 60_000` (AC-2.5), `CONTENT_TIMEOUT_MS = 60_000`.
 
@@ -672,7 +704,8 @@ export const CONTENT_RESPONSE_SCHEMA: Record<string, unknown>;   // { content: s
 | 인증 | `requireSession()` → `401 UNAUTHORIZED` |
 | 요청 본문 | `contentRequestSchema` = `{ platforms: Platform[] (1~3, 중복 불가), analysis: analysisResultSchema, activity: activitySummarySchema }` |
 | 사전 조건 | 스키마 검증 실패 → `400 INVALID_REQUEST` (분석 결과 부재 시 클라이언트가 애초에 호출 불가 — AC-3.1) |
-| 처리 | `platforms`에 대해 `Promise.allSettled`로 **병렬 생성**. 각 플랫폼 독립 타임아웃 `CONTENT_TIMEOUT_MS` |
+| 처리 | `platforms`를 **순차 생성**(각 플랫폼 독립 타임아웃 `CONTENT_TIMEOUT_MS`). 한 플랫폼의 예외는 그 플랫폼 결과만 `status:'error'` 로 만들고 다음 플랫폼 생성을 막지 않는다 |
+| 병렬 금지 근거 | 3건을 동시에 던지면 Gemini 가 `503 UNAVAILABLE`(high demand)로 2건을 거절해 **초안 1개만 생성되는 현상이 재현**됐다(2026-08). 순차 + 백오프 재시도로 3건/17.3초 전량 성공을 확인했다 — M7(45초) 이내 |
 | 응답 200 | `{ results: ContentGenerationResult[] }` — 항상 200. 개별 성공/실패를 배열로 반환 (AC-3.10) |
 | 응답 오류 | 인증·스키마 실패만 4xx |
 

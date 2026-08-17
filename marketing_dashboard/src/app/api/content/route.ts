@@ -17,8 +17,13 @@ export const dynamic = 'force-dynamic';
 /**
  * `POST /api/content` — 분석 결과를 플랫폼별 초안으로 옮긴다 (TECH_SPEC 3. 기능 3 > 3-D).
  *
- * - `platforms` 를 `Promise.allSettled` 로 **병렬 생성**하고 **항상 200** 으로 `{ results }` 를 반환한다.
+ * - `platforms` 를 **순차 생성**하고 **항상 200** 으로 `{ results }` 를 반환한다.
  *   개별 실패는 배열 원소의 `status:'error'` 로 표현한다 (AC-3.10).
+ *
+ *   병렬(`Promise.allSettled`)이었으나 순차로 바꿨다. 3건을 동시에 던지면 Gemini 가
+ *   `503 UNAVAILABLE`(high demand)로 2건을 거절해 초안 1개만 생성되는 일이 재현됐다.
+ *   `generateStructured` 의 백오프 재시도와 합쳐, 스스로 만드는 동시 부하를 없애는 쪽이
+ *   AC-3.2(3개 동시 출력)를 실제로 지킨다. 3건 × 약 6초 ≈ 20초로 M7(45초) 안에 들어온다.
  * - 인증·스키마 실패만 4xx 다.
  * - 개별 재생성(AC-3.7)은 `platforms: ['x']` 처럼 1개만 보내 같은 경로로 처리한다.
  */
@@ -58,20 +63,16 @@ export async function POST(request: Request): Promise<Response> {
 
     const { platforms, analysis, activity } = parsed.data;
 
-    const settled = await Promise.allSettled(
-      platforms.map((platform) => generateDraft(platform, analysis, activity)),
-    );
+    const results: ContentGenerationResult[] = [];
 
-    const results: ContentGenerationResult[] = platforms.map((platform, index) => {
-      const outcome = settled[index];
-
-      if (outcome.status === 'fulfilled') {
-        return { platform, status: 'success', draft: outcome.value };
+    // 한 플랫폼의 실패가 다른 플랫폼의 생성을 막지 않는다 (AC-3.10)
+    for (const platform of platforms) {
+      try {
+        results.push({ platform, status: 'success', draft: await generateDraft(platform, analysis, activity) });
+      } catch (e) {
+        results.push({ platform, status: 'error', error: normalizeError(e) });
       }
-
-      // 한 플랫폼의 실패가 다른 플랫폼의 결과를 무효화하지 않는다 (AC-3.10)
-      return { platform, status: 'error', error: normalizeError(outcome.reason) };
-    });
+    }
 
     const body: ContentResponse = { results };
 

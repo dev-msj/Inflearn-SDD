@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { buildActivitySummary } from '@/lib/activity';
-import type { GitHubEvent } from '@/lib/github';
-import type { PeriodDays } from '@/types/domain';
+import { buildActivitySummary, collectPushedRepositories, toCommitActivities } from '@/lib/activity';
+import type { GitHubEvent, GitHubRepoCommit } from '@/lib/github';
+import type { CommitActivity, PeriodDays } from '@/types/domain';
 
 /**
- * `buildActivitySummary` 단위 테스트 (AC-1.5, AC-1.7).
- * 순수 함수이므로 기간과 이벤트 픽스처를 고정해 결정적으로 검증한다.
+ * `buildActivitySummary` / `collectPushedRepositories` / `toCommitActivities` 단위 테스트 (AC-1.5, AC-1.7).
+ *
+ * 픽스처는 **실제 GitHub 응답 형태**를 따른다.
+ * 특히 `PushEvent` payload 에는 커밋 목록이 없다(키는 repository_id/push_id/ref/head/before 뿐).
+ * 커밋은 `GET /repos/{owner}/{repo}/commits` 로 따로 받아 주입한다.
  */
 
 const TO = new Date('2026-08-11T00:00:00.000Z');
@@ -30,8 +33,9 @@ function event(partial: {
   };
 }
 
-function pushEvent(repo: string, createdAt: string, commits: { sha: string; message: string }[]) {
-  return event({ type: 'PushEvent', createdAt, repo, payload: { commits } });
+/** 실제 PushEvent 는 payload 에 커밋을 담지 않는다 */
+function pushEvent(repo: string, createdAt: string) {
+  return event({ type: 'PushEvent', createdAt, repo });
 }
 
 function pullRequestEvent(
@@ -81,14 +85,16 @@ function watchEvent(repo: string, createdAt: string, action = 'started') {
   return event({ type: 'WatchEvent', createdAt, repo, payload: { action } });
 }
 
+/** `GET /repos/{o}/{r}/commits` 응답 1건 */
+function repoCommit(sha: string, message: string, date: string): GitHubRepoCommit {
+  return { sha, commit: { message, author: { date } } };
+}
+
 /** Push / PR(opened·merged·closed) / Issues / Watch / 기간 밖 / 무시 대상 이벤트를 모두 포함 */
 function fixtureEvents(): GitHubEvent[] {
   return [
-    pushEvent('octo/app', '2026-08-10T09:00:00.000Z', [
-      { sha: 'a1', message: 'feat: 로그인 추가\n\n본문은 버린다' },
-      { sha: 'a2', message: 'fix: 오타 수정' },
-    ]),
-    pushEvent('octo/lib', '2026-08-06T09:00:00.000Z', [{ sha: 'b1', message: 'chore: 의존성 갱신' }]),
+    pushEvent('octo/app', '2026-08-10T09:00:00.000Z'),
+    pushEvent('octo/lib', '2026-08-06T09:00:00.000Z'),
 
     pullRequestEvent('octo/app', '2026-08-09T10:00:00.000Z', 'opened', {
       number: 12,
@@ -124,7 +130,7 @@ function fixtureEvents(): GitHubEvent[] {
     event({ type: 'ForkEvent', createdAt: '2026-08-10T14:00:00.000Z', repo: 'octo/forked' }),
 
     // 기간 밖 (from 이전)
-    pushEvent('octo/legacy', '2026-07-20T09:00:00.000Z', [{ sha: 'z9', message: '기간 밖 커밋' }]),
+    pushEvent('octo/legacy', '2026-07-20T09:00:00.000Z'),
     pullRequestEvent('octo/legacy', '2026-07-21T09:00:00.000Z', 'opened', {
       number: 99,
       title: '기간 밖 PR',
@@ -132,9 +138,76 @@ function fixtureEvents(): GitHubEvent[] {
   ];
 }
 
+/** 별도 조회로 채워지는 커밋 (기간 밖 1건 포함) */
+function fixtureCommits(): CommitActivity[] {
+  return [
+    ...toCommitActivities('octo/app', [
+      repoCommit('a1', 'feat: 로그인 추가\n\n본문은 버린다', '2026-08-10T09:00:00.000Z'),
+      repoCommit('a2', 'fix: 오타 수정', '2026-08-10T08:00:00.000Z'),
+    ]),
+    ...toCommitActivities('octo/lib', [
+      repoCommit('b1', 'chore: 의존성 갱신', '2026-08-06T09:00:00.000Z'),
+    ]),
+    ...toCommitActivities('octo/legacy', [
+      repoCommit('z9', '기간 밖 커밋', '2026-07-20T09:00:00.000Z'),
+    ]),
+  ];
+}
+
+describe('collectPushedRepositories', () => {
+  it('기간 내 PushEvent 의 저장소만 중복 없이 사전순으로 모은다', () => {
+    expect(collectPushedRepositories(fixtureEvents(), PERIOD)).toEqual(['octo/app', 'octo/lib']);
+  });
+
+  it('같은 저장소에 여러 번 푸시해도 한 번만 담는다', () => {
+    const events = [
+      pushEvent('octo/app', '2026-08-10T09:00:00.000Z'),
+      pushEvent('octo/app', '2026-08-09T09:00:00.000Z'),
+      pushEvent('octo/app', '2026-08-08T09:00:00.000Z'),
+    ];
+
+    expect(collectPushedRepositories(events, PERIOD)).toEqual(['octo/app']);
+  });
+
+  it('PushEvent 가 아니거나 기간 밖이면 제외한다', () => {
+    const events = [
+      pushEvent('octo/legacy', '2026-07-01T09:00:00.000Z'),
+      watchEvent('vercel/next.js', '2026-08-10T12:00:00.000Z'),
+    ];
+
+    expect(collectPushedRepositories(events, PERIOD)).toEqual([]);
+  });
+});
+
+describe('toCommitActivities', () => {
+  it('커밋 메시지의 첫 줄만 보관하고 저장소명을 붙인다', () => {
+    const commits = toCommitActivities('octo/app', [
+      repoCommit('a1', 'feat: 로그인 추가\n\n본문은 버린다', '2026-08-10T09:00:00.000Z'),
+    ]);
+
+    expect(commits).toEqual([
+      {
+        sha: 'a1',
+        message: 'feat: 로그인 추가',
+        repo: 'octo/app',
+        occurredAt: '2026-08-10T09:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('sha 나 작성 시각이 없는 응답은 건너뛴다', () => {
+    const commits = toCommitActivities('octo/app', [
+      { sha: '', commit: { message: 'sha 없음', author: { date: '2026-08-10T09:00:00.000Z' } } },
+      { sha: 'c2', commit: { message: '날짜 없음', author: null } },
+    ]);
+
+    expect(commits).toEqual([]);
+  });
+});
+
 describe('buildActivitySummary', () => {
-  it('기간 내 이벤트만 커밋·PR·이슈·스타로 집계한다 (AC-1.5)', () => {
-    const summary = buildActivitySummary(fixtureEvents(), PERIOD, false);
+  it('기간 내 이벤트·커밋만 집계한다 (AC-1.5)', () => {
+    const summary = buildActivitySummary(fixtureEvents(), fixtureCommits(), PERIOD, false);
 
     expect(summary.counts.commits).toBe(3);
     expect(summary.counts.pullRequests).toEqual({ total: 3, opened: 1, merged: 1, closed: 1 });
@@ -143,23 +216,36 @@ describe('buildActivitySummary', () => {
     expect(summary.totalCount).toBe(9);
   });
 
-  it('기간 밖 이벤트를 제외한다 (AC-1.5)', () => {
-    const summary = buildActivitySummary(fixtureEvents(), PERIOD, false);
+  it('PushEvent 만으로는 커밋을 만들지 않는다 — 커밋은 주입된 배열에서만 온다', () => {
+    // 회귀 방지: 예전 구현은 payload.commits 를 읽었으나 실제 응답에는 그 필드가 없다
+    const summary = buildActivitySummary(
+      [pushEvent('octo/app', '2026-08-10T09:00:00.000Z')],
+      [],
+      PERIOD,
+      false,
+    );
+
+    expect(summary.counts.commits).toBe(0);
+    expect(summary.totalCount).toBe(0);
+  });
+
+  it('기간 밖 이벤트·커밋을 제외한다 (AC-1.5)', () => {
+    const summary = buildActivitySummary(fixtureEvents(), fixtureCommits(), PERIOD, false);
 
     expect(summary.commits.map((commit) => commit.sha)).not.toContain('z9');
     expect(summary.pullRequests.map((pr) => pr.number)).not.toContain(99);
     expect(summary.repositories).not.toContain('octo/legacy');
   });
 
-  it('커밋 메시지는 첫 줄만 보관하고 최신순으로 정렬한다', () => {
-    const summary = buildActivitySummary(fixtureEvents(), PERIOD, false);
+  it('커밋은 최신순으로 정렬한다', () => {
+    const summary = buildActivitySummary(fixtureEvents(), fixtureCommits(), PERIOD, false);
 
     expect(summary.commits[0]?.message).toBe('feat: 로그인 추가');
     expect(summary.commits.map((commit) => commit.sha)).toEqual(['a1', 'a2', 'b1']);
   });
 
   it('PR 상태를 opened / merged / closed 로 구분한다 (AC-1.5)', () => {
-    const summary = buildActivitySummary(fixtureEvents(), PERIOD, false);
+    const summary = buildActivitySummary(fixtureEvents(), fixtureCommits(), PERIOD, false);
 
     const states = Object.fromEntries(summary.pullRequests.map((pr) => [pr.number, pr.state]));
     expect(states).toEqual({ 12: 'opened', 34: 'merged', 35: 'closed' });
@@ -178,7 +264,7 @@ describe('buildActivitySummary', () => {
       }),
     ];
 
-    const summary = buildActivitySummary(events, PERIOD, false);
+    const summary = buildActivitySummary(events, [], PERIOD, false);
 
     expect(summary.counts.pullRequests).toEqual({ total: 1, opened: 0, merged: 1, closed: 0 });
     expect(summary.pullRequests[0]?.state).toBe('merged');
@@ -191,14 +277,14 @@ describe('buildActivitySummary', () => {
       issuesEvent('octo/app', '2026-08-08T10:00:00.000Z', 'closed', { number: 5, title: '중복 이슈' }),
     ];
 
-    const summary = buildActivitySummary(events, PERIOD, false);
+    const summary = buildActivitySummary(events, [], PERIOD, false);
 
     expect(summary.counts.issues).toEqual({ total: 1, opened: 0, closed: 1 });
     expect(summary.issues[0]?.state).toBe('closed');
   });
 
-  it('repositories 는 4개 배열의 합집합을 사전순으로 담는다 (AC-1.5 And)', () => {
-    const summary = buildActivitySummary(fixtureEvents(), PERIOD, false);
+  it('repositories 는 커밋·PR·이슈·스타의 합집합을 사전순으로 담는다 (AC-1.5 And)', () => {
+    const summary = buildActivitySummary(fixtureEvents(), fixtureCommits(), PERIOD, false);
 
     expect(summary.repositories).toEqual([
       'octo/app',
@@ -209,7 +295,7 @@ describe('buildActivitySummary', () => {
   });
 
   it('기간·truncated 는 입력을 그대로 반영한다 (C2)', () => {
-    const summary = buildActivitySummary(fixtureEvents(), PERIOD, true);
+    const summary = buildActivitySummary(fixtureEvents(), fixtureCommits(), PERIOD, true);
 
     expect(summary.period).toEqual({
       days: 7,
@@ -220,11 +306,12 @@ describe('buildActivitySummary', () => {
   });
 
   it('기간 내 활동이 없으면 totalCount 가 0 이고 배열이 모두 비어 있다 (AC-1.7)', () => {
-    const events = [
-      pushEvent('octo/legacy', '2026-07-01T09:00:00.000Z', [{ sha: 'old', message: '옛 커밋' }]),
-    ];
+    const events = [pushEvent('octo/legacy', '2026-07-01T09:00:00.000Z')];
+    const commits = toCommitActivities('octo/legacy', [
+      repoCommit('old', '옛 커밋', '2026-07-01T09:00:00.000Z'),
+    ]);
 
-    const summary = buildActivitySummary(events, PERIOD, false);
+    const summary = buildActivitySummary(events, commits, PERIOD, false);
 
     expect(summary.totalCount).toBe(0);
     expect(summary.commits).toEqual([]);
@@ -240,8 +327,8 @@ describe('buildActivitySummary', () => {
     });
   });
 
-  it('이벤트가 하나도 없어도 빈 요약을 반환한다 (AC-1.7)', () => {
-    const summary = buildActivitySummary([], PERIOD, false);
+  it('이벤트·커밋이 하나도 없어도 빈 요약을 반환한다 (AC-1.7)', () => {
+    const summary = buildActivitySummary([], [], PERIOD, false);
 
     expect(summary.totalCount).toBe(0);
     expect(summary.repositories).toEqual([]);
